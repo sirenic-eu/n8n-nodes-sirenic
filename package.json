@@ -1,0 +1,93 @@
+{
+  "name": "n8n-nodes-sirenic",
+  "version": "0.3.1",
+  "description": "KYB and company data for France and Europe in n8n: search companies, profiles, KYB files, sanctions screening, VAT checks and change monitoring — from official registers, paid per call over x402, no API key and no account.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n-nodes",
+    "n8n",
+    "sirenic",
+    "kyb",
+    "kyc",
+    "aml",
+    "compliance",
+    "due-diligence",
+    "sanctions-screening",
+    "company-data",
+    "company-lookup",
+    "business-registry",
+    "company-search",
+    "siren",
+    "siret",
+    "vat",
+    "vies",
+    "lei",
+    "france",
+    "french",
+    "europe",
+    "european",
+    "insee",
+    "inpi",
+    "bodacc",
+    "supplier-onboarding",
+    "vendor-screening",
+    "data-enrichment",
+    "b2b",
+    "x402",
+    "usdc",
+    "pay-per-call"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/sirenic-eu/n8n-nodes-sirenic",
+  "author": {
+    "name": "Sirenic",
+    "email": "contact@sirenic.eu"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sirenic-eu/n8n-nodes-sirenic.git"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "npm run typecheck && node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "test": "vitest run"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": [
+      "dist/credentials/SirenicApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Sirenic/Sirenic.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "^0.27.0",
+    "@n8n/node-cli": "^0.41.2",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.29.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.7",
+    "n8n-workflow": "*",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.65.0",
+    "viem": "2.55.2",
+    "vitest": "^3.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/sirenic-eu/n8n-nodes-sirenic/issues"
+  }
+}
