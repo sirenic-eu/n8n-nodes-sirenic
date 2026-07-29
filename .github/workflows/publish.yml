@@ -1,0 +1,72 @@
+name: Publish n8n node to npm
+
+# The point of this workflow is `--provenance`, and it is not a detail.
+#
+# Since 1 May 2026 n8n requires, verbatim: "you must publish ALL community nodes
+# using a GitHub action and include a provenance statement". Both existing x402
+# community nodes fail the official scanner on exactly this — "Package was not
+# published with npm provenance" — which is why neither is available on n8n
+# Cloud. Publishing with provenance from day one is what makes this package
+# eligible.
+#
+# Trigger: push a tag shaped `v*` (e.g. v0.3.1), or run it by hand.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# (dépôt dédié : le paquet est à la racine, plus de working-directory)
+# defaults:
+  run:
+#     working-directory: n8n-nodes-sirenic
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for npm provenance: mints the OIDC token attesting this
+      # artifact was built from this repository, by this workflow.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (official n8n-node tool, strict mode)
+        # `n8n-node lint` en mode strict vérifie AUSSI que eslint.config.mjs n'a
+        # pas été modifié par rapport à la config officielle — c'est la condition
+        # d'éligibilité au publishing n8n Cloud.
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify the package declares no runtime dependencies
+        # Belt and braces: `dependencies` must stay empty or the package is
+        # rejected at verification. Catching it here beats catching it after a
+        # publish that cannot be undone.
+        run: |
+          deps=$(node -p "JSON.stringify(require('./package.json').dependencies ?? {})")
+          if [ "$deps" != "{}" ]; then
+            echo "::error::package.json declares runtime dependencies: $deps"
+            exit 1
+          fi
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
