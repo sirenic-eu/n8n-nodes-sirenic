@@ -17,10 +17,7 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# (dépôt dédié : le paquet est à la racine, plus de working-directory)
-# defaults:
-  run:
-#     working-directory: n8n-nodes-sirenic
+# (dépôt dédié : le paquet est à la racine — pas de working-directory)
 
 jobs:
   publish:
