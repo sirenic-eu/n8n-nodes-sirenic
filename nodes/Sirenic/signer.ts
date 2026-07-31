@@ -61,7 +61,7 @@ function keccakF1600(state: bigint[]): void {
 			const d = c[(x + 4) % 5]! ^ rotl64(c[(x + 1) % 5]!, 1);
 			for (let y = 0; y < 25; y += 5) state[x + y] = state[x + y]! ^ d;
 		}
-		// ρ et π
+		// ρ and π
 		const b = new Array<bigint>(25);
 		for (let x = 0; x < 5; x++) {
 			for (let y = 0; y < 5; y++) {

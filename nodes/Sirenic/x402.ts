@@ -20,10 +20,6 @@
  * requirements object that passed those checks, re-selected by the same
  * predicate — there is no code path that could sign anything else. A node
  * that can sign payments is only as trustworthy as its refusals.
- *
- * NOTE ON LANGUAGE: this package is written in English, unlike the rest of the
- * Sirenic codebase. n8n's verification guidelines require it — "Both the node
- * interface and all documentation must be in English only."
  */
 import {
 	addressFromPrivateKey,
