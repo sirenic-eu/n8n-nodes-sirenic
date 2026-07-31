@@ -17,7 +17,7 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# (dépôt dédié : le paquet est à la racine — pas de working-directory)
+# (dedicated repository: the package sits at the root — no working-directory)
 
 jobs:
   publish:
@@ -41,9 +41,9 @@ jobs:
         run: npm run typecheck
 
       - name: Lint (official n8n-node tool, strict mode)
-        # `n8n-node lint` en mode strict vérifie AUSSI que eslint.config.mjs n'a
-        # pas été modifié par rapport à la config officielle — c'est la condition
-        # d'éligibilité au publishing n8n Cloud.
+        # In strict mode `n8n-node lint` ALSO checks that eslint.config.mjs has
+        # not been changed from the official config — that is the eligibility
+        # condition for n8n Cloud publishing.
         run: npm run lint
 
       - name: Test

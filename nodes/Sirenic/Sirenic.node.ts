@@ -8,52 +8,53 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { SirenicPayer, type PaymentSettings } from './x402';
-import { RESSOURCES, trouverOperation, type Champ } from './operations';
+import { RESOURCES, findOperation, type Field } from './operations';
 
 /**
  * Sirenic — official French and European company data, paid per call.
  *
- * Les 41 routes payantes de BASE sont exposées, organisées en ressources (les
- * fiches dédiées par pays — BE, CH, NO… — passent par le profil européen
- * générique : même handler côté API). Elles ne sont PAS décrites ici : tout
- * vient du catalogue `operations.ts`, seule source de vérité. L'interface et
- * le routage ne peuvent donc pas diverger — un tel écart ne se verrait qu'en
- * production, une fois le client débité.
+ * The 41 paid BASE routes are exposed, grouped into resources (the dedicated
+ * per-country routes — BE, CH, NO… — go through the generic European profile:
+ * the same handler on the API side). They are NOT described here: everything
+ * comes from the `operations.ts` catalogue, the single source of truth. The
+ * interface and the routing therefore cannot drift apart — such a gap would
+ * only show up in production, once the customer has been charged.
  */
 
-/** Un champ apparaît UNE fois, visible pour toutes les opérations qui l'utilisent. */
-function champsDeRessource(ressource: (typeof RESSOURCES)[number]): INodeProperties[] {
-	const parNom = new Map<string, { champ: Champ; operations: string[] }>();
-	for (const op of ressource.operations) {
-		for (const champ of op.champs ?? []) {
-			const entree = parNom.get(champ.nom);
-			if (entree) entree.operations.push(op.valeur);
-			else parNom.set(champ.nom, { champ, operations: [op.valeur] });
+/** A field appears ONCE, shown for every operation that uses it. */
+function resourceFields(resource: (typeof RESOURCES)[number]): INodeProperties[] {
+	const byName = new Map<string, { field: Field; operations: string[] }>();
+	for (const op of resource.operations) {
+		for (const field of op.fields ?? []) {
+			const entry = byName.get(field.name);
+			if (entry) entry.operations.push(op.value);
+			else byName.set(field.name, { field, operations: [op.value] });
 		}
 	}
 
-	return [...parNom.values()].map(({ champ, operations }) => ({
-		displayName: champ.libelle,
-		name: champ.nom,
-		type: champ.type,
-		default: champ.defaut ?? (champ.type === 'number' ? 0 : ''),
-		...(champ.requis ? { required: true } : {}),
-		...(champ.placeholder ? { placeholder: champ.placeholder } : {}),
-		...(champ.options ? { options: champ.options } : {}),
-		displayOptions: { show: { resource: [ressource.valeur], operation: operations } },
-		description: champ.description,
+	return [...byName.values()].map(({ field, operations }) => ({
+		displayName: field.label,
+		name: field.name,
+		type: field.type,
+		default: field.default ?? (field.type === 'number' ? 0 : ''),
+		...(field.required ? { required: true } : {}),
+		...(field.placeholder ? { placeholder: field.placeholder } : {}),
+		...(field.options ? { options: field.options } : {}),
+		...(field.typeOptions ? { typeOptions: field.typeOptions } : {}),
+		displayOptions: { show: { resource: [resource.value], operation: operations } },
+		description: field.description,
 	})) as INodeProperties[];
 }
 
 /**
- * Opération par défaut de chaque ressource, en LITTÉRAL.
+ * Default operation of each resource, as a LITERAL.
  *
- * Le linter n8n exige que `default` soit une valeur littérale : il analyse
- * l'AST et ne suit pas `RESSOURCES[0].operations[0].valeur`. On l'écrit donc à
- * la main — et un test vérifie que chaque valeur correspond bien à la première
- * opération de sa ressource, pour que ce doublon ne puisse pas diverger.
+ * The n8n linter requires `default` to be a literal value: it analyses the AST
+ * and does not follow `RESOURCES[0].operations[0].value`. So it is written out
+ * by hand — and a test checks that each value really is the first operation of
+ * its resource, so this duplication cannot drift.
  */
-export const OPERATION_PAR_DEFAUT: Record<string, string> = {
+export const DEFAULT_OPERATION: Record<string, string> = {
 	frenchCompany: 'search',
 	dueDiligence: 'getKyb',
 	financials: 'getFinancials',
@@ -65,25 +66,25 @@ export const OPERATION_PAR_DEFAUT: Record<string, string> = {
 	monitoring: 'watch',
 };
 
-/** Options d'opération d'une ressource, dérivées du catalogue. */
-function optionsDe(ressource: string) {
-	const r = RESSOURCES.find((x) => x.valeur === ressource);
+/** Operation options of a resource, derived from the catalogue. */
+function operationOptions(resource: string) {
+	const r = RESOURCES.find((x) => x.value === resource);
 	return (r?.operations ?? []).map((o) => ({
-		name: o.nom,
-		value: o.valeur,
+		name: o.name,
+		value: o.value,
 		action: o.action,
 		description: o.description,
 	}));
 }
 
-const PROPRIETES: INodeProperties[] = [
+const PROPERTIES: INodeProperties[] = [
 	{
 		displayName: 'Resource',
 		name: 'resource',
 		type: 'options',
 		noDataExpression: true,
 		default: 'frenchCompany',
-		options: RESSOURCES.map((r) => ({ name: r.nom, value: r.valeur })),
+		options: RESOURCES.map((r) => ({ name: r.name, value: r.value })),
 	},
 	{
 		displayName: 'Operation',
@@ -92,7 +93,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'search',
 		displayOptions: { show: { resource: ['frenchCompany'] } },
-		options: optionsDe('frenchCompany'),
+		options: operationOptions('frenchCompany'),
 	},
 	{
 		displayName: 'Operation',
@@ -101,7 +102,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'getKyb',
 		displayOptions: { show: { resource: ['dueDiligence'] } },
-		options: optionsDe('dueDiligence'),
+		options: operationOptions('dueDiligence'),
 	},
 	{
 		displayName: 'Operation',
@@ -110,7 +111,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'getFinancials',
 		displayOptions: { show: { resource: ['financials'] } },
-		options: optionsDe('financials'),
+		options: operationOptions('financials'),
 	},
 	{
 		displayName: 'Operation',
@@ -119,7 +120,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'screenSanctions',
 		displayOptions: { show: { resource: ['compliance'] } },
-		options: optionsDe('compliance'),
+		options: operationOptions('compliance'),
 	},
 	{
 		displayName: 'Operation',
@@ -128,7 +129,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'getFrench',
 		displayOptions: { show: { resource: ['procurement'] } },
-		options: optionsDe('procurement'),
+		options: operationOptions('procurement'),
 	},
 	{
 		displayName: 'Operation',
@@ -137,7 +138,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'search',
 		displayOptions: { show: { resource: ['europeanCompany'] } },
-		options: optionsDe('europeanCompany'),
+		options: operationOptions('europeanCompany'),
 	},
 	{
 		displayName: 'Operation',
@@ -146,7 +147,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'getFrenchPack',
 		displayOptions: { show: { resource: ['invoicing'] } },
-		options: optionsDe('invoicing'),
+		options: operationOptions('invoicing'),
 	},
 	{
 		displayName: 'Operation',
@@ -155,7 +156,7 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'searchDirectors',
 		displayOptions: { show: { resource: ['people'] } },
-		options: optionsDe('people'),
+		options: operationOptions('people'),
 	},
 	{
 		displayName: 'Operation',
@@ -164,9 +165,9 @@ const PROPRIETES: INodeProperties[] = [
 		noDataExpression: true,
 		default: 'watch',
 		displayOptions: { show: { resource: ['monitoring'] } },
-		options: optionsDe('monitoring'),
+		options: operationOptions('monitoring'),
 	},
-	...RESSOURCES.flatMap(champsDeRessource),
+	...RESOURCES.flatMap(resourceFields),
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -209,10 +210,10 @@ export class Sirenic implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'sirenicApi', required: true }],
-		// Métadonnées de découverte. Les `alias` alimentent la recherche du
-		// panneau de nœuds — l'endroit où un utilisateur cherche vraiment, bien
-		// avant npm. Quelqu'un qui tape « KYB », « SIREN » ou « due diligence »
-		// doit nous trouver, alors que le nom « Sirenic » ne lui dit rien.
+		// Discovery metadata. The `alias` entries feed the search box of the
+		// nodes panel — where users actually look, long before npm. Someone
+		// typing "KYB", "SIREN" or "due diligence" has to find us, given that
+		// the name "Sirenic" means nothing to them.
 		codex: {
 			categories: ['Data & Storage', 'Finance & Accounting', 'Sales'],
 			resources: {
@@ -230,7 +231,7 @@ export class Sirenic implements INodeType {
 				'x402', 'pay per call', 'USDC',
 			],
 		},
-		properties: PROPRIETES,
+		properties: PROPERTIES,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -270,7 +271,7 @@ export class Sirenic implements INodeType {
 					timeout?: number;
 				};
 
-				const definition = trouverOperation(resource, operation);
+				const definition = findOperation(resource, operation);
 				if (!definition) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -278,10 +279,10 @@ export class Sirenic implements INodeType {
 						{ itemIndex: i },
 					);
 				}
-				// Un paramètre absent vaut chaîne vide : les champs facultatifs du
-				// catalogue s'en servent pour décider s'ils entrent dans l'URL.
-				const lire = (nom: string) => String(this.getNodeParameter(nom, i, '') ?? '').trim();
-				const path = definition.chemin(lire);
+				// A missing parameter reads as an empty string: the catalogue's
+				// optional fields use that to decide whether they enter the URL.
+				const read = (name: string) => String(this.getNodeParameter(name, i, '') ?? '').trim();
+				const path = definition.path(read);
 
 				const result = await payer.call(path, options.timeout ?? 120_000, options.dryRun === true);
 
