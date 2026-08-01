@@ -1,12 +1,49 @@
 # n8n-nodes-sirenic
 
-Official French and European company data in n8n — **no API key, no account, no contract**.
+**Can you safely invoice or pay this company?** One n8n node answers it, for France and
+Europe, from official registers — **no API key, no account, no contract**.
 
 Sirenic is paid per call over [x402](https://x402.org): each request settles a small USDC
 payment on Base. You bring a wallet, you set a spending cap, you are done. Prices run from
 **$0.001** to **$2.00** per call, and you only pay for calls that succeed.
 
-## What you can do
+## Use case #1 — Verify a supplier before payment
+
+The deadline is not ours: from **1 September 2026** every French company subject to VAT must
+be able to **receive** electronic invoices. Issuance is phased — large and mid-size companies
+from that same date, SMEs and micro-businesses from **1 September 2027**. Belgium's B2B
+mandate has been live since **1 January 2026**.
+
+*Supplier Verification & Invoicing → **Verify a supplier before payment*** ($0.03) answers in
+a single call:
+
+| What comes back | Where it comes from |
+|---|---|
+| Legal identity, status, e-invoicing obligation dates | INSEE Sirene, INPI RNE |
+| The intra-EU VAT number, checked **live** | VIES (European Commission) |
+| IBAN structure check, then the bank identified | Official bank registries (ACPR/REGAFI, NBB, GLEIF BIC-to-LEI…) |
+| A deterministic verdict, `pret_a_facturer` true/false | Computed by Sirenic — reasons from a **closed list**, each tagged blocking or informational |
+
+A VIES outage yields an honest non-blocking reason, never a false invalid.
+
+For a counterparty outside France, ***Verify a European supplier before payment*** ($0.03)
+returns the same verdict, plus Peppol reachability for Belgium and — uniquely in Poland —
+whether the IBAN is **declared by that taxpayer** in the official White List (*wykaz
+podatników VAT*). Paying more than **15,000 PLN** into an undeclared account costs the buyer
+the VAT deduction and creates joint liability for the VAT.
+
+Two limits, carried by the responses themselves and worth repeating here:
+
+- **This is not a payee verification.** The account holder's name is never checked
+  (`verification_titulaire: "non_disponible"`).
+- **Sirenic is not an accredited platform (PDP).** It has no access to the central directory,
+  and it never issues, transmits, converts or routes invoices. It verifies and prepares —
+  nothing else.
+
+The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IBAN* ($0.005),
+*Verify VAT Number* ($0.003).
+
+## What else you can do
 
 | Operation | What it answers | Price |
 |---|---|---:|
@@ -14,14 +51,28 @@ payment on Base. You bring a wallet, you set a spending cap, you are done. Price
 | **Get Company Profile** | Legal name, form, head office, activity, workforce, officers, VAT number | $0.005 |
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
-| **Verify VAT Number** | An intra-EU VAT number, checked against VIES | $0.003 |
 | **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
 | **Watch Companies** | 1 to 100 companies, notified when something changes | $0.05 |
 
 Every paid answer carries its source, its freshness date and an Ed25519 signature, so an
 audit trail comes for free.
 
-## The workflow this node was built for
+## The workflows this node was built for
+
+### Accounts payable — check the supplier, then release the payment
+
+```
+[New supplier, or a new invoice] ──▶ [Sirenic: Verify a supplier before payment]
+                                                    │
+              pret_a_facturer = true  ──▶ [Approve the payment run]
+              pret_a_facturer = false ──▶ [Human review, with the blocking reason]
+```
+
+The verdict is deterministic and its reasons come from a closed list, so the *false* branch
+can be routed on the reason itself (ceased company, VAT invalid at VIES, invalid IBAN) rather
+than on free text. The signed response is the audit trail your accountant will ask for.
+
+### Supplier monitoring — three nodes
 
 **Watch Companies** takes a webhook URL. Point it at an n8n **Webhook** node and you have
 supplier monitoring in three nodes:
@@ -97,10 +148,10 @@ which is precisely what keeps the data defensible under GDPR.
 ## Finding this node
 
 In the n8n nodes panel, this node answers to what you would actually type —
-**KYB**, **SIREN**, **SIRET**, **VAT**, **sanctions**, **due diligence**,
-**supplier onboarding**, **company lookup** — not just to the name "Sirenic",
-which tells you nothing until you already know us. It sits under **Data &
-Storage**, **Finance & Accounting** and **Sales**.
+**e-invoicing**, **IBAN**, **VAT**, **supplier**, **onboarding**, **KYB**,
+**SIREN**, **SIRET**, **sanctions**, **due diligence**, **company lookup** —
+not just to the name "Sirenic", which tells you nothing until you already know
+us. It sits under **Data & Storage**, **Finance & Accounting** and **Sales**.
 
 ## Compatibility
 

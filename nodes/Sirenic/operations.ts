@@ -87,6 +87,106 @@ const NATIONAL_ID: Field = {
 };
 
 export const RESOURCES: Resource[] = [
+	// First on purpose: this array drives the order of the n8n dropdown, and
+	// "can I safely invoice and pay this company?" is the one question with a
+	// deadline — the French e-invoicing mandate starts on 1 September 2026.
+	// The `value`s below (invoicing, getFrenchPack…) are frozen: they are stored
+	// in the users' saved workflows, so renaming one would break them silently.
+	{
+		value: 'invoicing',
+		name: 'Supplier Verification & Invoicing',
+		operations: [
+			{
+				value: 'getFrenchPack',
+				name: 'Verify French Supplier',
+				action: 'Verify a supplier before payment',
+				description:
+					'Verify a supplier before payment, in one call: legal identity and obligation dates, the intra-EU VAT number checked live against VIES, an IBAN check against official registries with the bank identified, and a deterministic ready-to-invoice verdict (pret_a_facturer) with closed-list reasons. From 1 September 2026 every French company must be able to receive electronic invoices. Not a payee verification: the account holder name is never checked. ($0.03).',
+				path: (p) =>
+					`/v1/facturation/dossier?siren=${enc(p('siren'))}${p('iban') ? `&iban=${enc(p('iban'))}` : ''}`,
+				fields: [
+					SIREN,
+					{
+						name: 'iban',
+						label: 'IBAN',
+						type: 'string',
+						// One field per NAME is generated for the whole resource, so this
+						// text is also what "Verify IBAN" shows — it must cover both.
+						description:
+							"The supplier's bank account. Optional on the verification packs, where it adds the bank check; required by Verify IBAN.",
+					},
+				],
+			},
+			{
+				value: 'getEuPack',
+				name: 'Verify European Supplier',
+				action: 'Verify a European supplier before payment',
+				description:
+					'Verify a European supplier before payment, by country and national identifier: registry identity, VAT checked against VIES, Peppol reachability for Belgium (B2B mandate live since 1 January 2026) and, in Poland, whether the IBAN is declared by that taxpayer in the official White List — paying more than 15,000 PLN into an undeclared account costs the buyer the VAT deduction and creates joint liability for the VAT. Same deterministic verdict, closed-list reasons. ($0.03).',
+				path: (p) =>
+					`/v1/eu/facturation/dossier?pays=${enc(p('country'))}&id=${enc(p('companyId'))}${p('iban') ? `&iban=${enc(p('iban'))}` : ''}`,
+				fields: [
+					COUNTRY,
+					NATIONAL_ID,
+					{
+						name: 'iban',
+						label: 'IBAN',
+						type: 'string',
+						// One field per NAME is generated for the whole resource, so this
+						// text is also what "Verify IBAN" shows — it must cover both.
+						description:
+							"The supplier's bank account. Optional on the verification packs, where it adds the bank check; required by Verify IBAN.",
+					},
+				],
+			},
+			{
+				value: 'prepareEInvoicing',
+				name: 'Prepare E-Invoicing',
+				action: 'Prepare e invoicing data for a company',
+				description:
+					'Preparation data for the French e-invoicing mandate of 1 September 2026 (reception obligatory for every company; issuance phased, large and mid-size companies from 2026, SMEs from 1 September 2027): identity, computed intra-EU VAT number, establishments, indicative obligation dates. Preparation only — Sirenic is not an accredited platform (PDP), never accesses the central directory and never issues or routes invoices. ($0.02).',
+				path: (p) => `/v1/entreprise/${enc(p('siren'))}/facturation-prep`,
+				fields: [SIREN],
+			},
+			{
+				value: 'verifyVat',
+				name: 'Verify VAT Number',
+				action: 'Verify an EU VAT number before invoicing',
+				description:
+					'Check an intra-EU VAT number against the official VIES service — the tax half of verifying a supplier before payment, and a required check under the French e-invoicing mandate of 1 September 2026. Valid, invalid or unavailable, with the VIES consultation identifier as proof. ($0.003).',
+				path: (p) => `/v1/tva/verifier/${enc(p('vatNumber'))}`,
+				fields: [
+					{
+						name: 'vatNumber',
+						label: 'VAT Number',
+						type: 'string',
+						required: true,
+						placeholder: 'FR12345678901',
+						description: 'Intra-EU VAT number, country prefix included.',
+					},
+				],
+			},
+			{
+				value: 'verifyIban',
+				name: 'Verify IBAN',
+				action: 'Check an IBAN and identify the bank before payment',
+				description:
+					'IBAN check against official registries, to verify a supplier before payment: ISO 13616 and mod-97 structure check, then bank identification from official sources. Explicitly NOT a payee verification — the account holder name is never checked. ($0.005).',
+				path: (p) => `/v1/iban/verifier/${enc(p('iban'))}`,
+				fields: [
+					{
+						name: 'iban',
+						label: 'IBAN',
+						type: 'string',
+						required: true,
+						placeholder: 'FR7630006000011234567890189',
+						description: 'IBAN to check.',
+					},
+				],
+			},
+		],
+	},
+
 	{
 		value: 'frenchCompany',
 		name: 'French Company',
@@ -504,94 +604,6 @@ export const RESOURCES: Resource[] = [
 				path: (p) =>
 					`/v1/eu/entreprise/${enc(p('country'))}/${enc(p('companyId'))}/transactions-dirigeants`,
 				fields: [COUNTRY, NATIONAL_ID],
-			},
-		],
-	},
-
-	{
-		value: 'invoicing',
-		name: 'Invoicing',
-		operations: [
-			{
-				value: 'getFrenchPack',
-				name: 'Get French Invoicing Pack',
-				action: 'Get everything needed to invoice a French company',
-				description:
-					'E-invoicing preparation plus a live VAT check, an IBAN and bank check, and a deterministic ready-to-invoice verdict. ($0.03).',
-				path: (p) =>
-					`/v1/facturation/dossier?siren=${enc(p('siren'))}${p('iban') ? `&iban=${enc(p('iban'))}` : ''}`,
-				fields: [
-					SIREN,
-					{
-						name: 'iban',
-						label: 'IBAN',
-						type: 'string',
-						description: 'Optional IBAN to check alongside the company.',
-					},
-				],
-			},
-			{
-				value: 'getEuPack',
-				name: 'Get European Invoicing Pack',
-				action: 'Get everything needed to invoice a European company',
-				description:
-					'The same invoicing pack for a European counterparty, by country and national identifier. ($0.03).',
-				path: (p) =>
-					`/v1/eu/facturation/dossier?pays=${enc(p('country'))}&id=${enc(p('companyId'))}${p('iban') ? `&iban=${enc(p('iban'))}` : ''}`,
-				fields: [
-					COUNTRY,
-					NATIONAL_ID,
-					{
-						name: 'iban',
-						label: 'IBAN',
-						type: 'string',
-						description: 'Optional IBAN to check alongside the company.',
-					},
-				],
-			},
-			{
-				value: 'prepareEInvoicing',
-				name: 'Prepare E-Invoicing',
-				action: 'Prepare e invoicing data for a company',
-				description:
-					'Preparation data for the French e-invoicing mandate: identity, computed VAT number, establishments, indicative obligation dates. Preparation only — Sirenic is not an accredited platform and never routes invoices. ($0.02).',
-				path: (p) => `/v1/entreprise/${enc(p('siren'))}/facturation-prep`,
-				fields: [SIREN],
-			},
-			{
-				value: 'verifyVat',
-				name: 'Verify VAT Number',
-				action: 'Verify an EU VAT number',
-				description: 'Check an intra-EU VAT number against the European VIES service. ($0.003).',
-				path: (p) => `/v1/tva/verifier/${enc(p('vatNumber'))}`,
-				fields: [
-					{
-						name: 'vatNumber',
-						label: 'VAT Number',
-						type: 'string',
-						required: true,
-						placeholder: 'FR12345678901',
-						description: 'Intra-EU VAT number, country prefix included.',
-					},
-				],
-			},
-			{
-				value: 'verifyIban',
-				name: 'Verify IBAN',
-				action: 'Verify an IBAN and identify the bank',
-				description:
-					'Structure check plus bank identification. Not a Verification of Payee. ($0.005).',
-				path: (p) => `/v1/iban/verifier/${enc(p('iban'))}`,
-				fields: [
-					{
-						name: 'iban',
-						label: 'IBAN',
-						type: 'string',
-						required: true,
-						placeholder: 'FR7630006000011234567890189',
-						description: 'IBAN to check.',
-					},
-				],
 			},
 		],
 	},
