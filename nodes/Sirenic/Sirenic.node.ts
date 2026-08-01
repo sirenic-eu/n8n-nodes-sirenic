@@ -83,7 +83,10 @@ const PROPERTIES: INodeProperties[] = [
 		name: 'resource',
 		type: 'options',
 		noDataExpression: true,
-		default: 'frenchCompany',
+		// Matches the first entry of RESOURCES: a new node opens on the question
+		// that has a deadline. Only affects NEW nodes — saved workflows keep the
+		// resource they stored.
+		default: 'invoicing',
 		options: RESOURCES.map((r) => ({ name: r.name, value: r.value })),
 	},
 	{
