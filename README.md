@@ -1,7 +1,11 @@
 # n8n-nodes-sirenic
 
 **Can you safely invoice or pay this company?** One n8n node answers it, for France and
-Europe, from official registers — **no API key, no account, no contract**.
+Europe, from official registers — **no API key, no account, no contract**. Company lookup
+by name or SIREN, full company profiles, KYB due-diligence files, AML sanctions screening,
+annual accounts and financial data, default-risk scoring and company monitoring — straight
+from the official French company registry (INSEE Sirene, INPI RNE) and official European
+registers.
 
 Sirenic is paid per call over [x402](https://x402.org): each request settles a small USDC
 payment on Base. You bring a wallet, you set a spending cap, you are done. Prices run from

@@ -196,7 +196,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Search',
 				action: 'Search companies by name',
 				description:
-					'Find a company by name when you do not have its SIREN. Returns the top matches with a 0-1 confidence score. ($0.001).',
+					'French company search when you do not have the SIREN: company lookup by name in the official French company registry (INSEE Sirene). Returns the top matches with a 0-1 confidence score. ($0.001).',
 				path: (p) => `/v1/recherche?q=${enc(p('query'))}`,
 				fields: [
 					{
@@ -213,7 +213,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Profile',
 				action: 'Get a company profile',
 				description:
-					'Official profile by SIREN: legal name, form, head office, activity code, workforce, officers, VAT number. ($0.005).',
+					'Full French company profile by SIREN, from the official company registry: legal name, form, head office, activity code, workforce, officers, VAT number. ($0.005).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}`,
 				fields: [SIREN],
 			},
@@ -307,7 +307,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get KYB File',
 				action: 'Get a full KYB file',
 				description:
-					'Everything needed to onboard a supplier in one call: identity, officers, insolvency alerts, filed financials, sanctions screening, computed VAT number. ($0.15).',
+					'KYB (Know Your Business) due diligence — everything needed to onboard a supplier in one call: identity, officers, insolvency alerts, filed financials, sanctions screening, computed VAT number. ($0.15).',
 				path: (p) => `/v1/kyb/${enc(p('siren'))}`,
 				fields: [SIREN],
 			},
@@ -351,7 +351,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Failure Score',
 				action: 'Get the failure risk score',
 				description:
-					'Deterministic 12-month failure-risk score with every component shown: no AI, no black box. ($0.10).',
+					'Deterministic 12-month default-risk score (credit risk) with every component shown: no AI, no black box. ($0.10).',
 				path: (p) => `/v1/score/defaillance/${enc(p('siren'))}`,
 				fields: [SIREN],
 			},
@@ -360,7 +360,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Legal Alerts',
 				action: 'Get insolvency and legal alerts',
 				description:
-					'Official gazette announcements: insolvency proceedings, deregistrations, sales and transfers. ($0.01).',
+					'BODACC legal alerts, the official French gazette: insolvency proceedings, deregistrations, sales and transfers. ($0.01).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/alertes`,
 				fields: [SIREN],
 			},
@@ -385,7 +385,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Financials',
 				action: 'Get filed annual financials',
 				description:
-					'Filed annual figures and ratios, one entry per fiscal year. Each response states whether the figures are statutory or consolidated accounts, and flags series where the official source conflates the two. ($0.01).',
+					'Annual accounts and ratios from filed financial statements, one entry per fiscal year. Each response states whether the figures are statutory or consolidated accounts, and flags series where the official source conflates the two. ($0.01).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/finances`,
 				fields: [SIREN],
 			},
@@ -428,7 +428,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Screen Sanctions',
 				action: 'Screen a name against sanctions lists',
 				description:
-					'Screen a person or company name against six official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO). Scored matches, never a bare yes or no. ($0.02).',
+					'AML sanctions screening: screen a person or company name against six official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO). Scored matches, never a bare yes or no. ($0.02).',
 				path: (p) =>
 					`/v1/sanctions/check?name=${enc(p('name'))}${p('birthYear') ? `&birth_year=${enc(p('birthYear'))}` : ''}`,
 				fields: [
@@ -545,7 +545,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Search',
 				action: 'Search European registers by name',
 				description:
-					'Search official registers across Europe under one schema, plus worldwide LEI coverage. ($0.003).',
+					'European company search: company lookup across official European company registers under one schema, plus worldwide LEI coverage. ($0.003).',
 				path: (p) => `/v1/eu/recherche?q=${enc(p('query'))}`,
 				fields: [
 					{
@@ -617,7 +617,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Search Officers',
 				action: 'Search company officers by name',
 				description:
-					'Find the mandates held by a company officer, by name. ($0.02).',
+					'Reverse search for company directors and officers in France: find the mandates held by a person, by name. ($0.02).',
 				path: (p) => `/v1/dirigeant/recherche?nom=${enc(p('name'))}`,
 				fields: [
 					{
@@ -684,7 +684,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Watch Companies',
 				action: 'Watch companies for changes',
 				description:
-					'Monitor one to 100 companies and get notified when something changes: officers, insolvency, deregistration. Point the webhook at an n8n Webhook node to trigger a workflow. Detection is daily, aligned on how often the official sources publish. ($0.05).',
+					'Company monitoring for France: watch one to 100 companies and get notified when something changes — officers, insolvency, deregistration. Point the webhook at an n8n Webhook node to trigger a workflow. Detection is daily, aligned on how often the official sources publish. ($0.05).',
 				path: (p) => {
 					const q = new URLSearchParams({ cibles: p('targets') });
 					if (p('webhook')) q.set('webhook', p('webhook'));
