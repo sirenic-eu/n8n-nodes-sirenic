@@ -1,0 +1,299 @@
+{
+  "name": "Automate French company KYB checks for client onboarding with Sirenic",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Automate French company KYB checks for client onboarding\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nFintechs, payment providers, neobanks and B2B marketplaces that must run know-your-business checks before opening an account (EU AML obligations).\n\n### How it works\nYour onboarding form posts a SIREN to the webhook. One Sirenic call ($0.15) returns a complete KYB file from official registries: legal identity, officers, BODACC insolvency proceedings, financials and sanctions screening — with an Ed25519-signed response you can keep as audit evidence. A Switch then routes the applicant: an open insolvency proceeding or an inactive company is a hard stop; a sanctions status of correspondances_a_verifier goes to a human (these are candidate matches on names, often homonyms — never an automatic refusal); everything else is auto-approved and logged. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Point your onboarding form at the webhook URL (POST, JSON body with a `siren` field).\n3. Pick your Slack compliance channel and your audit Google Sheet.\n4. Test with SIREN 552032534.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Slack and Google Sheets credentials.\n\n### How to customize\nTighten or loosen the Switch rules to match your risk appetite; archive the signed response in your document vault; replace Slack with a Jira or Linear ticket for a formal review queue.",
+        "height": 800,
+        "width": 500
+      },
+      "id": "sticky-main-t03",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Onboarding form posts a SIREN\nAny form tool works (Typeform, Tally, your own signup) — POST a JSON body containing a `siren` field.",
+        "height": 140,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-step1-t03",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. One call, five checks\nIdentity, officers, insolvency, financials and sanctions in a single $0.15 KYB file — signed, so the response itself is your audit evidence.",
+        "height": 160,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-step2-t03",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Sanctions ≠ automatic refusal\nThe screening covers the company AND its officers, so a hit is a *candidate* match (homonyms are common on large boards). Status correspondances_a_verifier goes to a human; only insolvency or an inactive company stops onboarding outright.",
+        "height": 200,
+        "width": 460,
+        "color": 7
+      },
+      "id": "sticky-step3-t03",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kyb-onboarding",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-t03",
+      "name": "Onboarding request received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        240
+      ],
+      "webhookId": "8a41c9d2-6b73-4e18-9f52-1c7d3e5a90bb"
+    },
+    {
+      "parameters": {
+        "resource": "dueDiligence",
+        "operation": "getKyb",
+        "siren": "={{ $json.body.siren }}"
+      },
+      "id": "sirenic-kyb-t03",
+      "name": "Run KYB check",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [
+        60,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-stop",
+                    "leftValue": "={{ ($json.alertes_bodacc.procedures_collectives || []).length > 0 || $json.identite.etat_administratif !== 'actif' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hard stop"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-review",
+                    "leftValue": "={{ $json.criblage_sanctions.statut }}",
+                    "rightValue": "aucune_correspondance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Human review"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {
+          "renameFallbackOutput": "Auto approve"
+        }
+      },
+      "id": "switch-risk-t03",
+      "name": "Route by risk level",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        300,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=:octagonal_sign: *KYB hard stop — do not onboard*\nSIREN {{ $('Onboarding request received').item.json.body.siren }} — {{ $json.identite.denomination }}\nAdministrative status: {{ $json.identite.etat_administratif }}\nInsolvency proceedings on file: {{ ($json.alertes_bodacc.procedures_collectives || []).length }}\nCompleteness score: {{ $json.score_completude }}{{ ($json.blocs_manquants || []).length ? ' · missing blocks: ' + $json.blocs_manquants.join(', ') : '' }}\nSource: {{ $json.source }}",
+        "otherOptions": {}
+      },
+      "id": "slack-stop-t03",
+      "name": "Block and alert compliance",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=:mag: *KYB needs a human decision — candidate sanctions matches*\nSIREN {{ $('Onboarding request received').item.json.body.siren }} — {{ $json.identite.denomination }}\nScreening status: {{ $json.criblage_sanctions.statut }}\nTargets with candidate matches: {{ ($json.criblage_sanctions.cibles || []).filter(c => (c.correspondances || []).length > 0).map(c => c.cible + ' (' + c.role + ')').join(', ') || 'none' }}\n_Candidate matches are name-based and often homonyms — confirm identity (birth date, nationality) before refusing._",
+        "otherOptions": {}
+      },
+      "id": "slack-review-t03",
+      "name": "Queue for human review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SIREN": "={{ $('Onboarding request received').item.json.body.siren }}",
+            "Company": "={{ $json.identite.denomination }}",
+            "Decision": "auto-approved",
+            "Screening": "={{ $json.criblage_sanctions.statut }}",
+            "Checked at": "={{ $now.toISO() }}",
+            "Source": "={{ $json.source }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sheets-approve-t03",
+      "name": "Log approved onboarding",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Onboarding request received": {
+      "main": [
+        [
+          {
+            "node": "Run KYB check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run KYB check": {
+      "main": [
+        [
+          {
+            "node": "Route by risk level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by risk level": {
+      "main": [
+        [
+          {
+            "node": "Block and alert compliance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queue for human review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log approved onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
