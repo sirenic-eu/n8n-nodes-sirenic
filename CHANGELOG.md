@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.5.0 — 2026-08-03
+
+### Sirenic Trigger
+
+A second node: your workflow now starts when a watched company changes, instead
+of asking. Point it at a watch and it fires on insolvency proceedings, officer
+changes, deregistration, sanctions hits and the other events the daily check
+finds.
+
+Two modes, because Sirenic only accepts a webhook URL that is public HTTPS on
+port 443 — which rules out most self-hosted instances:
+
+- **Webhook**: Sirenic pushes signed batches. The node verifies the Ed25519
+  signature of every delivery and refuses anything else with a 401. The public
+  key is fetched from `/.well-known/sirenic-signing-key` and cached, so a key
+  rotation is picked up instead of turning every batch into a forgery.
+- **Polling**: the node reads the watch through its free read route. It works
+  behind a firewall, and it is the only way to test your wiring — the API sends
+  nothing when a watch is created.
+
+Two deliberate design choices:
+
+- **The trigger never spends money.** Creating or renewing a watch is priced per
+  target (up to $5.00 for 100), so it stays an explicit action on the main
+  Sirenic node. Activating a workflow charges nobody: the trigger hands you a
+  URL and you pass it to Create Watch yourself.
+- **No credential required.** Receiving events costs nothing and the read route
+  is authorised by the watch token, so a trigger has no business asking for a
+  wallet private key.
+
+On duplicates: the API sends no event id and retries a batch up to three times
+with identical bytes, so every item carries `_sirenic.event_key`, a stable hash
+of the event. Polling mode remembers the keys it has already emitted. Webhook
+mode cannot — n8n discards what a webhook context writes to static data once it
+starts an execution — so chain a Remove Duplicates node on that key if your
+workflow is not idempotent.
+
 ## 0.4.2 — 2026-08-03
 
 Fixes found by auditing all 42 operations against the live API. Nine were broken

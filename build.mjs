@@ -29,6 +29,12 @@ await build({
 
 await build({
 	...common,
+	entryPoints: ['nodes/SirenicTrigger/SirenicTrigger.node.ts'],
+	outfile: 'dist/nodes/SirenicTrigger/SirenicTrigger.node.js',
+});
+
+await build({
+	...common,
 	entryPoints: ['credentials/SirenicApi.credentials.ts'],
 	outfile: 'dist/credentials/SirenicApi.credentials.js',
 });
@@ -36,3 +42,6 @@ await build({
 mkdirSync('dist/nodes/Sirenic', { recursive: true });
 copyFileSync('nodes/Sirenic/sirenic.light.svg', 'dist/nodes/Sirenic/sirenic.light.svg');
 copyFileSync('nodes/Sirenic/sirenic.dark.svg', 'dist/nodes/Sirenic/sirenic.dark.svg');
+mkdirSync('dist/nodes/SirenicTrigger', { recursive: true });
+copyFileSync('nodes/SirenicTrigger/sirenic.light.svg', 'dist/nodes/SirenicTrigger/sirenic.light.svg');
+copyFileSync('nodes/SirenicTrigger/sirenic.dark.svg', 'dist/nodes/SirenicTrigger/sirenic.dark.svg');
