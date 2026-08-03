@@ -27,16 +27,32 @@ describe('operation catalogue', () => {
 				expect(findOperation(r.value, op.value), key).toBeDefined();
 			}
 		}
-		// 41 = the paid BASE routes of the production price list (50 as of
-		// 2026-07-29, minus the 9 dedicated per-country routes that go through
-		// the generic EU profile).
-		expect(seen.size).toBe(41);
+		// 42 = 40 paid BASE routes (50 in the production price list as of
+		// 2026-07-29, minus the 9 dedicated per-country routes that go through the
+		// generic EU profile, minus /comptes-pdf which production disabled on
+		// 2026-07-29) + the 2 FREE surveillance read-back routes, without which a
+		// paid watch can be unreachable on a self-hosted instance.
+		expect(seen.size).toBe(42);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {
 		// Booby-trapped parameters: if a builder forgets enc(), the slash and the
 		// ampersand get through and break (or hijack) the route.
-		const trap = (name: string) => ({ query: 'a&b/c', siren: '552032534' })[name] ?? 'x&y/z';
+		// Fields whose builder checks the FORMAT get a plausible value; every other
+		// field keeps the booby-trapped one, which is what this test is about.
+		const plausible: Record<string, string> = {
+			query: 'a&b/c',
+			siren: '552032534',
+			since: '2026-01-01',
+			targets: '552032534,542065479',
+			regulatorName: 'a&b/c',
+			iban: 'FR7630006000011234567890189',
+			// Builders that refuse an unserved value need a served one here: their
+			// own guards are covered in query-contract.test.ts.
+			country: 'BE',
+			email: 'watch@example.com',
+		};
+		const trap = (name: string) => plausible[name] ?? 'x&y/z';
 		for (const r of RESOURCES) {
 			for (const op of r.operations) {
 				const path = op.path(trap);
