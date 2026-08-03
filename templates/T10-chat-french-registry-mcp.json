@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## Chat with the French company registry\n\n### Who's it for\nAnalysts, sales, compliance and founders who want answers about French or European companies in plain language.\n\n### How it works\nA chat trigger feeds an AI Agent connected to the Sirenic MCP server: 69 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.\n\n### How to set up\n1. Add credentials for your chat model (OpenAI or any other).\n2. Open the chat and ask a question — the MCP endpoint needs no registration.\n\n### Requirements\nn8n 1.88+ (MCP Client Tool node) — works on n8n Cloud. A chat-model credential.\n\n### How to customize\nSwap the chat model; restrict the tool list in the MCP Client node; to execute paid lookups automatically, use the Sirenic community node (self-hosted), which signs x402 payments for you.",
-        "height": 680,
-        "width": 480
+        "height": 866,
+        "width": 560
       },
       "id": "sticky-main-t10",
       "name": "Sticky Note",
@@ -19,7 +19,7 @@
     {
       "parameters": {
         "content": "### How payment works\nPaid tools return a payment_required envelope with an exact quote instead of charging blindly — the agent reports the price and what the tool would return. To execute paid calls, pass a signed x402 payment via the x_payment parameter (see api.sirenic.eu docs) or use the Sirenic community node (self-hosted). Errors are never billed.",
-        "height": 220,
+        "height": 285,
         "width": 380,
         "color": 7
       },

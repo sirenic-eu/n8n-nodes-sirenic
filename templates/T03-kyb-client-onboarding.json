@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## Automate French company KYB checks for client onboarding\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nFintechs, payment providers, neobanks and B2B marketplaces that must run know-your-business checks before opening an account (EU AML obligations).\n\n### How it works\nYour onboarding form posts a SIREN to the webhook. One Sirenic call ($0.15) returns a complete KYB file from official registries: legal identity, officers, BODACC insolvency proceedings, financials and sanctions screening — with an Ed25519-signed response you can keep as audit evidence. A Switch then routes the applicant: an open insolvency proceeding or an inactive company is a hard stop; a sanctions status of correspondances_a_verifier goes to a human (these are candidate matches on names, often homonyms — never an automatic refusal); everything else is auto-approved and logged. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Point your onboarding form at the webhook URL (POST, JSON body with a `siren` field).\n3. Pick your Slack compliance channel and your audit Google Sheet.\n4. Test with SIREN 552032534.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Slack and Google Sheets credentials.\n\n### How to customize\nTighten or loosen the Switch rules to match your risk appetite; archive the signed response in your document vault; replace Slack with a Jira or Linear ticket for a formal review queue.",
-        "height": 800,
-        "width": 500
+        "height": 1065,
+        "width": 560
       },
       "id": "sticky-main-t03",
       "name": "Sticky Note",
@@ -19,7 +19,7 @@
     {
       "parameters": {
         "content": "### 1. Onboarding form posts a SIREN\nAny form tool works (Typeform, Tally, your own signup) — POST a JSON body containing a `siren` field.",
-        "height": 140,
+        "height": 165,
         "width": 400,
         "color": 7
       },
@@ -51,7 +51,7 @@
     {
       "parameters": {
         "content": "### 3. Sanctions ≠ automatic refusal\nThe screening covers the company AND its officers, so a hit is a *candidate* match (homonyms are common on large boards). Status correspondances_a_verifier goes to a human; only insolvency or an inactive company stops onboarding outright.",
-        "height": 200,
+        "height": 213,
         "width": 460,
         "color": 7
       },

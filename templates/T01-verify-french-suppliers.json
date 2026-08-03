@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## Verify French suppliers before paying invoices\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nFinance and accounts-payable teams paying French suppliers, and anyone exposed to wire-transfer fraud.\n\n### How it works\nEach new supplier row in your Google Sheet triggers one Sirenic call ($0.03) that checks official registries: legal identity and status, the intra-EU VAT number live against VIES, IBAN structure with bank identification — and returns a deterministic ready-to-invoice verdict (pret_a_facturer) with closed-list reasons. Verified suppliers are appended to your log; blocked ones alert your purchasing channel on Slack with the exact reasons. Note: not a payee verification — the account holder name is never checked. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Point both Google Sheets nodes to your payment sheet (columns SIREN, optional IBAN).\n3. Pick your Slack channel. Test with SIREN 552032534.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Slack credentials.\n\n### How to customize\nAdd the Default Risk Score operation ($0.10) before granting payment terms; swap Sheets for Airtable or your ERP; route alerts to Teams or email.",
-        "height": 790,
-        "width": 500
+        "height": 986,
+        "width": 560
       },
       "id": "sticky-main-t01",
       "name": "Sticky Note",
@@ -19,7 +19,7 @@
     {
       "parameters": {
         "content": "### 1. Watch the payment sheet\nEvery new row with a SIREN column triggers one verification call.",
-        "height": 120,
+        "height": 141,
         "width": 400,
         "color": 7
       },
@@ -35,7 +35,7 @@
     {
       "parameters": {
         "content": "### 2. Route on the verdict\npret_a_facturer = true → log as verified. Otherwise → Slack alert with the closed-list reasons (invalid VAT, deregistered company, IBAN inconsistency…).",
-        "height": 140,
+        "height": 165,
         "width": 460,
         "color": 7
       },
