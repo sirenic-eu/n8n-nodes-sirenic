@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-sirenic",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Verify a supplier before you pay them, in n8n: the French e-invoicing mandate of 1 September 2026 (Belgium since 1 January 2026), legal identity, VAT checked against VIES, IBAN checked against official registries and a deterministic ready-to-invoice verdict — plus KYB due-diligence files, AML sanctions screening, company lookup and company data from the official French company registry (INSEE Sirene, INPI RNE) and European registers. Paid per call over x402, no API key and no account.",
   "keywords": [
     "n8n-community-node-package",
@@ -78,7 +78,8 @@
       "dist/credentials/SirenicApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/Sirenic/Sirenic.node.js"
+      "dist/nodes/Sirenic/Sirenic.node.js",
+      "dist/nodes/SirenicTrigger/SirenicTrigger.node.js"
     ]
   },
   "peerDependencies": {
