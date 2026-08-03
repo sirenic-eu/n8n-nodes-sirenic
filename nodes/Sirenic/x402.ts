@@ -37,6 +37,13 @@ export const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 /** USDC has 6 decimals; quotes are expressed in atomic units. */
 const DECIMALS = 1_000_000;
 
+/**
+ * Head-room added to the window declared in the quote before the client gives
+ * up. Settlement runs after the handler returns, so a client that aborts at
+ * exactly the window pays for a response it never reads.
+ */
+const MARGE_REGLEMENT_MS = 30_000;
+
 export interface PaymentSettings {
 	privateKey: string;
 	baseUrl: string;
@@ -50,6 +57,18 @@ export interface CallResult {
 	body: unknown;
 	/** What was actually paid, in USD. Zero for a free endpoint. */
 	paid: number;
+	/**
+	 * Set when the 402 is the answer to a dry run, not a failure: the quote was
+	 * checked and nothing was signed. Callers must not treat it as an error.
+	 */
+	dryRun?: true;
+	/**
+	 * Set when the endpoint answered with something other than JSON — a PDF,
+	 * typically. The bytes are handed over untouched so the caller can attach
+	 * them as an n8n binary: decoding a PDF as text corrupts it, and the user
+	 * has already paid for those bytes.
+	 */
+	binary?: { data: Buffer; contentType: string; fileName?: string };
 }
 
 interface QuoteOption {
@@ -220,7 +239,8 @@ export class SirenicPayer {
 			signal: AbortSignal.timeout(30_000),
 		});
 		if (preflight.status !== 402) {
-			return { status: preflight.status, body: await readBody(preflight), paid: 0 };
+			const free = await readBody(preflight);
+			return { status: preflight.status, body: free.body, paid: 0, binary: free.binary };
 		}
 
 		const header = preflight.headers.get('payment-required');
@@ -250,6 +270,7 @@ export class SirenicPayer {
 					message: 'Dry run: the quote passed every check but no payment was signed.',
 				},
 				paid: 0,
+				dryRun: true,
 			};
 		}
 
@@ -275,31 +296,73 @@ export class SirenicPayer {
 			randomNonce(),
 		);
 
+		// The quote states the window the API grants this route; settlement happens
+		// AFTER the handler, so aborting before window + settlement pays for a
+		// response that is thrown away (up to $2.00 on capital links). The user's
+		// timeout can only ever extend that floor, never cut it short.
+		const plancher = (accepted.maxTimeoutSeconds ?? 120) * 1000 + MARGE_REGLEMENT_MS;
 		const response = await fetch(url, {
 			headers: {
 				Accept: 'application/json',
 				'PAYMENT-SIGNATURE': encodeHeader(payload),
-				'Access-Control-Expose-Headers': 'PAYMENT-RESPONSE,X-PAYMENT-RESPONSE',
 			},
-			signal: AbortSignal.timeout(timeoutMs),
+			signal: AbortSignal.timeout(Math.max(timeoutMs, plancher)),
 		});
 
-		const body = await readBody(response);
+		const { body, binary } = await readBody(response);
 		if (response.status >= 400) {
 			// Sirenic cancels the payment on 404/503, so nothing was charged.
 			return { status: response.status, body, paid: 0 };
 		}
 		this.spent += amount;
-		return { status: response.status, body, paid: fromAtomic(amount) };
+		return { status: response.status, body, paid: fromAtomic(amount), binary };
 	}
 }
 
-async function readBody(response: Response): Promise<unknown> {
+/**
+ * Reads a response body according to what the endpoint actually returned.
+ *
+ * Three shapes exist: JSON (almost every route), binary (the PDF report and the
+ * original filed documents), and plain text (rate limits and header-size
+ * errors, which must not be parsed as JSON or a real error becomes a silent
+ * empty object). Binary is returned as raw bytes: reading a PDF with `.text()`
+ * replaces every non-UTF-8 byte and destroys a file the user just paid for.
+ */
+async function readBody(
+	response: Response,
+): Promise<{ body: unknown; binary?: CallResult['binary'] }> {
 	const type = response.headers.get('content-type') ?? '';
-	if (type.includes('application/json')) {
-		return response.json().catch(() => ({}));
+	if (/\bjson\b/.test(type)) {
+		return { body: await response.json().catch(() => ({})) };
 	}
-	// Rate limits and header-size errors answer in plain text; parsing them as
-	// JSON would turn a real error into a silent empty object.
-	return { message: await response.text().catch(() => '') };
+	if (!type || type.startsWith('text/')) {
+		return { body: { message: await response.text().catch(() => '') } };
+	}
+	const data = Buffer.from(await response.arrayBuffer());
+	return {
+		body: {
+			is_binary: true,
+			content_type: type.split(';')[0]?.trim() ?? type,
+			bytes: data.length,
+			note: 'The bytes are attached as n8n binary data under "data", not in this JSON.',
+		},
+		binary: {
+			data,
+			contentType: type.split(';')[0]?.trim() ?? type,
+			fileName: fileNameFrom(response.headers.get('content-disposition')),
+		},
+	};
+}
+
+/** Filename the API suggests for a downloaded document, when it sends one. */
+function fileNameFrom(disposition: string | null): string | undefined {
+	if (!disposition) return undefined;
+	const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+	if (!match?.[1]) return undefined;
+	// Never throw here: this runs after the server settled the payment.
+	try {
+		return decodeURIComponent(match[1]);
+	} catch {
+		return match[1];
+	}
 }

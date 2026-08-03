@@ -1,11 +1,13 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { SirenicPayer, type PaymentSettings } from './x402';
 import { RESOURCES, findOperation, type Field } from './operations';
@@ -13,7 +15,7 @@ import { RESOURCES, findOperation, type Field } from './operations';
 /**
  * Sirenic — official French and European company data, paid per call.
  *
- * The 41 paid BASE routes are exposed, grouped into resources (the dedicated
+ * The paid BASE routes are exposed, grouped into resources (the dedicated
  * per-country routes — BE, CH, NO… — go through the generic European profile:
  * the same handler on the API side). They are NOT described here: everything
  * comes from the `operations.ts` catalogue, the single source of truth. The
@@ -287,9 +289,40 @@ export class Sirenic implements INodeType {
 				const read = (name: string) => String(this.getNodeParameter(name, i, '') ?? '').trim();
 				const path = definition.path(read);
 
-				const result = await payer.call(path, options.timeout ?? 120_000, options.dryRun === true);
+				// The payment layer raises this floor to the window the API declared
+				// in its quote: settlement happens after the handler, so aborting
+				// early pays for a response that is thrown away.
+				const result = await payer.call(
+					path,
+					options.timeout ?? 120_000,
+					options.dryRun === true,
+				);
 
-				output.push({
+				// An HTTP error is a failure, not a result: pushing it as a normal
+				// item makes the workflow carry on with an error object in place of
+				// the data. Payment is cancelled on any status >= 400, so nothing
+				// was charged — but the user must be told.
+				const notFoundIsData = result.status === 404 && definition.notFoundIsEmpty === true;
+				if (result.status >= 400 && !result.dryRun && !notFoundIsData) {
+					const detail =
+						typeof result.body === 'object' && result.body !== null
+							? ((result.body as Record<string, unknown>).message ??
+								(result.body as Record<string, unknown>).error ??
+								'')
+							: '';
+					throw new NodeApiError(
+						this.getNode(),
+						result.body as JsonObject,
+						{
+							message: `Sirenic returned ${result.status} for ${resource}.${operation}${detail ? `: ${String(detail)}` : ''}`,
+							description: 'Nothing was charged: Sirenic cancels the payment on any error.',
+							httpCode: String(result.status),
+							itemIndex: i,
+						},
+					);
+				}
+
+				const item: INodeExecutionData = {
 					json: {
 						...(typeof result.body === 'object' && result.body !== null && !Array.isArray(result.body)
 							? (result.body as Record<string, unknown>)
@@ -303,11 +336,30 @@ export class Sirenic implements INodeType {
 						},
 					},
 					pairedItem: { item: i },
-				});
+				};
+				// A PDF is delivered as an n8n binary so it can be uploaded or
+				// attached as-is. Handing it over as text would corrupt the file.
+				if (result.binary) {
+					item.binary = {
+						data: await this.helpers.prepareBinaryData(
+							result.binary.data,
+							result.binary.fileName ?? `${operation}.pdf`,
+							result.binary.contentType,
+						),
+					};
+				}
+				output.push(item);
 			} catch (error) {
 				if (this.continueOnFail()) {
+					// Keep the API's own structured body: workflows branch on its
+					// machine-readable `error` code, not on the prose message.
+					const cause: unknown = error instanceof NodeApiError ? error.cause : undefined;
+					const corps =
+						cause && typeof cause === 'object' && !Array.isArray(cause)
+							? (cause as IDataObject)
+							: {};
 					output.push({
-						json: { error: error instanceof Error ? error.message : String(error) },
+						json: { ...corps, error: error instanceof Error ? error.message : String(error) },
 						pairedItem: { item: i },
 					});
 					continue;
