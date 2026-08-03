@@ -1,0 +1,212 @@
+{
+  "name": "Enrich new HubSpot companies with official French registry data (SIREN)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Enrich new HubSpot companies with official French registry data\n\n**Who's it for** — Sales ops teams whose reps only type a company name.\n\n**What it does** — Every company created in HubSpot is matched against the official French registry (INSEE Sirene) and enriched with its SIREN, legal form, activity code (NAF), workforce bracket and administrative status — for **$0.006 per company** ($0.001 search + $0.005 profile).\n\n**How it works** — HubSpot company created → fetch its name → Sirenic *Search* (returns matches with a 0-1 confidence score) → confident match: Sirenic *Get Profile* → update HubSpot. Low-confidence match: Slack message for a 10-second human review — never guess on homonyms.\n\n**Setup**\n1. Install the Sirenic community node (`n8n-nodes-sirenic`) — self-hosted.\n2. Create your Sirenic credentials.\n3. Connect HubSpot (developer credential for the trigger, app token for the actions).\n4. Create a custom company property named `siren` in HubSpot (Settings → Properties).\n5. Pick your Slack review channel.\n\nTip: the `siren` property becomes the reliable key for every other workflow (dedup, monitoring, scoring).",
+        "height": 640,
+        "width": 480
+      },
+      "id": "sticky-main-t02",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "eventsUi": {
+          "eventValues": [
+            {
+              "name": "company.creation"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "trigger-hubspot-t02",
+      "name": "Company created in HubSpot",
+      "type": "n8n-nodes-base.hubspotTrigger",
+      "typeVersion": 1,
+      "position": [-200, 240]
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "get",
+        "companyId": "={{ $json.objectId }}",
+        "additionalFields": {}
+      },
+      "id": "hubspot-get-t02",
+      "name": "Get company details",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [20, 240]
+    },
+    {
+      "parameters": {
+        "resource": "frenchCompany",
+        "operation": "search",
+        "query": "={{ $json.properties.name.value }}"
+      },
+      "id": "sirenic-search-t02",
+      "name": "Find SIREN by name",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-confidence",
+              "leftValue": "={{ ($json.resultats || [])[0] ? $json.resultats[0].score_confiance : 0 }}",
+              "rightValue": 0.8,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-confidence-t02",
+      "name": "Confident match?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "resource": "frenchCompany",
+        "operation": "getProfile",
+        "siren": "={{ $json.resultats[0].siren }}"
+      },
+      "id": "sirenic-profile-t02",
+      "name": "Get official profile",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [700, 120]
+    },
+    {
+      "parameters": {
+        "resource": "company",
+        "operation": "update",
+        "companyId": "={{ $('Company created in HubSpot').item.json.objectId }}",
+        "updateFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "siren",
+                "value": "={{ $json.siren }}"
+              },
+              {
+                "property": "description",
+                "value": "={{ $json.denomination }} — {{ $json.nature_juridique }} — NAF {{ $json.activite_principale }} — workforce {{ $json.tranche_effectif_salarie || 'n/a' }} — status {{ $json.etat_administratif }} (source: official French registry)"
+              }
+            ]
+          }
+        }
+      },
+      "id": "hubspot-update-t02",
+      "name": "Update company with registry data",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [920, 120]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=:mag: *Manual review needed* — no confident registry match\nHubSpot company: *{{ $('Get company details').item.json.properties.name.value }}*\nBest candidate: {{ ($json.resultats || [])[0] ? $json.resultats[0].denomination + ' (SIREN ' + $json.resultats[0].siren + ', confidence ' + $json.resultats[0].score_confiance + ')' : 'none found' }}\nAdd the SIREN manually in HubSpot to finish enrichment.",
+        "otherOptions": {}
+      },
+      "id": "slack-review-t02",
+      "name": "Ask for manual review",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [700, 380]
+    }
+  ],
+  "connections": {
+    "Company created in HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Get company details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get company details": {
+      "main": [
+        [
+          {
+            "node": "Find SIREN by name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find SIREN by name": {
+      "main": [
+        [
+          {
+            "node": "Confident match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confident match?": {
+      "main": [
+        [
+          {
+            "node": "Get official profile",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask for manual review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get official profile": {
+      "main": [
+        [
+          {
+            "node": "Update company with registry data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

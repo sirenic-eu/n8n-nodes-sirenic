@@ -1,0 +1,121 @@
+{
+  "name": "Chat with the French company registry using an AI Agent and Sirenic MCP",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Chat with the French company registry\n\n**Who's it for** — Anyone who wants to ask questions about French or European companies in plain language: analysts, sales, compliance, founders.\n\n**What it does** — An AI Agent connected to the Sirenic MCP server: 69 tools over OFFICIAL registry data (INSEE, INPI, BODACC, 6 sanctions lists, 11 EU country registers). Ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ».\n\n**How it works** — Chat trigger → AI Agent → MCP Client tool pointed at `https://api.sirenic.eu/mcp`. Discovering tools and getting exact price quotes is FREE. Executing a data tool is pay-per-call (from $0.001).\n\n**Setup**\n1. Add your OpenAI (or any chat model) credentials.\n2. That's it — the MCP endpoint requires NO account and NO API key.\n\n✅ Works on n8n Cloud today: only native nodes are used.",
+        "height": 560,
+        "width": 460
+      },
+      "id": "sticky-main-t10",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-700, -20]
+    },
+    {
+      "parameters": {
+        "content": "### 💰 How payment works\n\nPaid tools return a `payment_required` envelope with an exact quote instead of charging blindly — the agent reports the price and what the tool would return.\n\nTo execute paid calls today, pass a signed x402 payment via the `x_payment` parameter (see api.sirenic.eu docs) or use the Sirenic community node (self-hosted) which signs payments for you. Errors are never billed.",
+        "height": 300,
+        "width": 340,
+        "color": 4
+      },
+      "id": "sticky-pay-t10",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 340]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "chat-trigger-t10",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [-160, 220],
+      "webhookId": "3f1c2b7e-5a90-4f5e-9a55-8d21c4e7ab90"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a company-intelligence assistant for French and European companies, powered by Sirenic: official registry data (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers) exposed as MCP tools.\n\nRules:\n- Listing tools and obtaining quotes is free. Data tools are pay-per-call (from $0.001).\n- When a tool returns a payment_required envelope, do NOT retry: report the exact price, what the tool would return, and the payment hint.\n- Never invent company data. Only state what a tool actually returned, and cite the source field.\n- Prefer the cheapest tool that answers the question (search $0.001, profile $0.005) before expensive ones.\n- Answer in the user's language. Amounts and dates exactly as returned."
+        }
+      },
+      "id": "agent-t10",
+      "name": "French registry agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [120, 220]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "llm-t10",
+      "name": "Chat model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [20, 460]
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://api.sirenic.eu/mcp",
+        "serverTransport": "httpStreamable",
+        "authentication": "none",
+        "include": "all",
+        "options": {}
+      },
+      "id": "mcp-t10",
+      "name": "Sirenic MCP (69 tools)",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.1,
+      "position": [240, 460]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "French registry agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "French registry agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sirenic MCP (69 tools)": {
+      "ai_tool": [
+        [
+          {
+            "node": "French registry agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
