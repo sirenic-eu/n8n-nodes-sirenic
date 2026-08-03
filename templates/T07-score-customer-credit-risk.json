@@ -1,0 +1,310 @@
+{
+  "name": "Score French customer credit risk weekly with Sirenic and Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Score French customer credit risk weekly\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nCredit managers and finance teams carrying receivables on French customers.\n\n### How it works\nEvery Monday the workflow reads your customer sheet, calls Sirenic's default risk score for each SIREN ($0.10) and writes back the score (0-100), its class, the 12-month risk wording and the reference financial year. The score is deterministic — it comes with its component axes (liquidity, profitability, structure) and its model version, so any decision you take on it stays explainable. A Slack digest reports only the customers whose class CHANGED since the previous run, so nobody gets spammed with a stable portfolio. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Prepare a Google Sheet with columns: `SIREN`, `Company`, `Class` (left empty on first run), `Score`, `Checked at`.\n3. Select that sheet in both Google Sheets nodes and pick your Slack channel.\n4. Run once manually to fill the baseline, then let the schedule take over.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Slack credentials. Budget: $0.10 per customer per run — keep the sheet to customers with real exposure.\n\n### How to customize\nDrive credit limits directly from the class; switch the schedule to monthly for a large book; push the score into your ERP instead of Sheets.",
+        "height": 800,
+        "width": 500
+      },
+      "id": "sticky-main-t07",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Read the customer book\nOne row per customer with an exposure. The loop processes them one at a time so a single failure never aborts the run.",
+        "height": 150,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-step1-t07",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Alert on CHANGE, not on state\nThe IF compares the fresh class with the one stored in the sheet. A stable portfolio produces no Slack noise — only downgrades and upgrades surface.",
+        "height": 180,
+        "width": 440,
+        "color": 7
+      },
+      "id": "sticky-step2-t07",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "schedule-t07",
+      "name": "Every Monday morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -200,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "sheets-read-t07",
+      "name": "Read customer book",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        20,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "loop-t07",
+      "name": "One customer at a time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "dueDiligence",
+        "operation": "getFailureScore",
+        "siren": "={{ $json.SIREN }}"
+      },
+      "id": "sirenic-score-t07",
+      "name": "Get default risk score",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-changed",
+              "leftValue": "={{ $json.classe }}",
+              "rightValue": "={{ $('One customer at a time').item.json.Class }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-changed-t07",
+      "name": "Class changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=:chart_with_upwards_trend: *Credit risk class changed*\n{{ $json.denomination }} (SIREN {{ $json.siren }})\n*{{ $('One customer at a time').item.json.Class || 'no baseline' }}* → *{{ $json.classe }}* · score {{ $json.score_risque }}/100 · 12-month risk: {{ $json.risque_12m }}\nDrivers: {{ ($json.composantes || []).map(c => c.axe + ' ' + c.indicateur + '=' + c.valeur).join(' · ') }}\nReference year {{ $json.exercice_reference }} · confidence {{ $json.confiance }} · model {{ $json.version_modele }}\n_Decision-support indicator, not a solvency opinion._",
+        "otherOptions": {}
+      },
+      "id": "slack-changed-t07",
+      "name": "Report the change on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SIREN": "={{ $json.siren }}",
+            "Company": "={{ $json.denomination }}",
+            "Class": "={{ $json.classe }}",
+            "Score": "={{ $json.score_risque }}",
+            "Checked at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "SIREN"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sheets-write-t07",
+      "name": "Store the new score",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Every Monday morning": {
+      "main": [
+        [
+          {
+            "node": "Read customer book",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read customer book": {
+      "main": [
+        [
+          {
+            "node": "One customer at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One customer at a time": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get default risk score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get default risk score": {
+      "main": [
+        [
+          {
+            "node": "Class changed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Class changed?": {
+      "main": [
+        [
+          {
+            "node": "Report the change on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store the new score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report the change on Slack": {
+      "main": [
+        [
+          {
+            "node": "Store the new score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store the new score": {
+      "main": [
+        [
+          {
+            "node": "One customer at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

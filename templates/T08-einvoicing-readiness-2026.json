@@ -1,0 +1,299 @@
+{
+  "name": "Check French e-invoicing readiness for all your customers with Sirenic",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Check French e-invoicing readiness (2026 mandate)\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only — Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Warnings` — filled by the workflow).\n3. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n4. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add Verify VAT Number ($0.003) for a live VIES check; send the summary to Slack instead of email.",
+        "height": 840,
+        "width": 500
+      },
+      "id": "sticky-main-t08",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Walk the customer list\nManual run for the initial audit; the monthly schedule keeps newcomers covered.",
+        "height": 140,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-step1-t08",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Dates come from the size category\nObligation dates are derived from the company's INSEE category (GE/ETI/PME), which is why they are indicative: check the customer's own situation before relying on them contractually.",
+        "height": 200,
+        "width": 460,
+        "color": 7
+      },
+      "id": "sticky-step2-t08",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "schedule-t08",
+      "name": "Monthly audit",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -220,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "manual-t08",
+      "name": "Run the full audit now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "sheets-read-t08",
+      "name": "Read customer list",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        20,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "loop-t08",
+      "name": "One customer at a time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "invoicing",
+        "operation": "prepareEInvoicing",
+        "siren": "={{ $json.SIREN }}"
+      },
+      "id": "sirenic-prep-t08",
+      "name": "Get e-invoicing readiness",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SIREN": "={{ $json.siren }}",
+            "Company": "={{ $json.destinataire.denomination }}",
+            "VAT": "={{ $json.tva.numero_intracommunautaire_calcule }}",
+            "Reception since": "={{ $json.calendrier_reforme.reception_obligatoire_depuis }}",
+            "Issuing since": "={{ $json.calendrier_reforme.emission_obligatoire_depuis }}",
+            "Establishments": "={{ $json.adressage.nombre_etablissements }}",
+            "Warnings": "={{ ($json.avertissements || []).join(' | ') }}",
+            "Checked at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "SIREN"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sheets-write-t08",
+      "name": "Write readiness back",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-t08",
+      "name": "Collect all results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        480,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "",
+        "subject": "=E-invoicing readiness — {{ $json.data.length }} customers checked",
+        "emailType": "text",
+        "message": "=E-invoicing readiness audit ({{ $now.format('yyyy-MM-dd') }})\n\nCustomers checked: {{ $json.data.length }}\nWith warnings: {{ $json.data.filter(d => (d.avertissements || []).length > 0).length }}\n\nDetail:\n{{ $json.data.map(d => '- ' + d.destinataire.denomination + ' (SIREN ' + d.siren + ') — VAT ' + d.tva.numero_intracommunautaire_calcule + ' — reception due ' + d.calendrier_reforme.reception_obligatoire_depuis + ', issuing due ' + d.calendrier_reforme.emission_obligatoire_depuis + ((d.avertissements || []).length ? ' — WARNINGS: ' + d.avertissements.join('; ') : '')).join('\\n') }}\n\nObligation dates are indicative, derived from each company's INSEE size category. Sirenic is not an accredited platform (PDP): preparation data only, no invoice is issued or routed.\nSource: official French registries (INSEE Sirene / INPI RNE).",
+        "options": {}
+      },
+      "id": "gmail-t08",
+      "name": "Email the summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Monthly audit": {
+      "main": [
+        [
+          {
+            "node": "Read customer list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run the full audit now": {
+      "main": [
+        [
+          {
+            "node": "Read customer list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read customer list": {
+      "main": [
+        [
+          {
+            "node": "One customer at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One customer at a time": {
+      "main": [
+        [
+          {
+            "node": "Collect all results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get e-invoicing readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get e-invoicing readiness": {
+      "main": [
+        [
+          {
+            "node": "Write readiness back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write readiness back": {
+      "main": [
+        [
+          {
+            "node": "One customer at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect all results": {
+      "main": [
+        [
+          {
+            "node": "Email the summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
