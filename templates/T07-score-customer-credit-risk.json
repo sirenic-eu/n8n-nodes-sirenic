@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## Score French customer credit risk weekly\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nCredit managers and finance teams carrying receivables on French customers.\n\n### How it works\nEvery Monday the workflow reads your customer sheet, calls Sirenic's default risk score for each SIREN ($0.10) and writes back the score (0-100), its class, the 12-month risk wording and the reference financial year. The score is deterministic — it comes with its component axes (liquidity, profitability, structure) and its model version, so any decision you take on it stays explainable. A Slack digest reports only the customers whose class CHANGED since the previous run, so nobody gets spammed with a stable portfolio. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Prepare a Google Sheet with columns: `SIREN`, `Company`, `Class` (left empty on first run), `Score`, `Checked at`.\n3. Select that sheet in both Google Sheets nodes and pick your Slack channel.\n4. Run once manually to fill the baseline, then let the schedule take over.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Slack credentials. Budget: $0.10 per customer per run — keep the sheet to customers with real exposure.\n\n### How to customize\nDrive credit limits directly from the class; switch the schedule to monthly for a large book; push the score into your ERP instead of Sheets.",
-        "height": 800,
-        "width": 500
+        "height": 1018,
+        "width": 560
       },
       "id": "sticky-main-t07",
       "name": "Sticky Note",
@@ -19,7 +19,7 @@
     {
       "parameters": {
         "content": "### 1. Read the customer book\nOne row per customer with an exposure. The loop processes them one at a time so a single failure never aborts the run.",
-        "height": 150,
+        "height": 165,
         "width": 400,
         "color": 7
       },
@@ -35,7 +35,7 @@
     {
       "parameters": {
         "content": "### 2. Alert on CHANGE, not on state\nThe IF compares the fresh class with the one stored in the sheet. A stable portfolio produces no Slack noise — only downgrades and upgrades surface.",
-        "height": 180,
+        "height": 165,
         "width": 440,
         "color": 7
       },

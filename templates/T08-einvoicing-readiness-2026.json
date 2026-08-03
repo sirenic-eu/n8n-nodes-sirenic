@@ -4,8 +4,8 @@
     {
       "parameters": {
         "content": "## Check French e-invoicing readiness (2026 mandate)\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only — Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Warnings` — filled by the workflow).\n3. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n4. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add Verify VAT Number ($0.003) for a live VIES check; send the summary to Slack instead of email.",
-        "height": 840,
-        "width": 500
+        "height": 1144,
+        "width": 560
       },
       "id": "sticky-main-t08",
       "name": "Sticky Note",
@@ -35,7 +35,7 @@
     {
       "parameters": {
         "content": "### 2. Dates come from the size category\nObligation dates are derived from the company's INSEE category (GE/ETI/PME), which is why they are indicative: check the customer's own situation before relying on them contractually.",
-        "height": 200,
+        "height": 189,
         "width": 460,
         "color": 7
       },
