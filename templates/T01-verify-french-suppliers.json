@@ -3,15 +3,41 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Verify French suppliers before paying invoices\n\n**Who's it for** — Finance and accounts-payable teams paying French suppliers.\n\n**What it does** — Every new supplier row added to your payment sheet is checked against official French registries in ONE call ($0.03): legal identity, intra-EU VAT verified live against VIES, IBAN structure + bank identification, and a deterministic `pret_a_facturer` (ready-to-invoice) verdict with closed-list reasons.\n\n**How it works** — Sheets row → Sirenic *Verify French Supplier* → IF verdict → log as verified, or alert #purchasing on Slack with the exact reasons (invalid VAT, deregistered company, IBAN inconsistency…).\n\n**Setup**\n1. Install the Sirenic community node (`n8n-nodes-sirenic`) — self-hosted.\n2. Create your Sirenic credentials.\n3. Pick your Google Sheet (columns: `SIREN`, `IBAN` optional) in both Sheets nodes.\n4. Pick your Slack channel.\n\n⚠️ Not a payee verification: the account holder name is never checked. Errors are never billed.",
-        "height": 620,
-        "width": 480
+        "content": "## Verify French suppliers before paying invoices\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nFinance and accounts-payable teams paying French suppliers, and anyone exposed to wire-transfer fraud.\n\n### How it works\nEach new supplier row in your Google Sheet triggers one Sirenic call ($0.03) that checks official registries: legal identity and status, the intra-EU VAT number live against VIES, IBAN structure with bank identification — and returns a deterministic ready-to-invoice verdict (pret_a_facturer) with closed-list reasons. Verified suppliers are appended to your log; blocked ones alert your purchasing channel on Slack with the exact reasons. Note: not a payee verification — the account holder name is never checked. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Point both Google Sheets nodes to your payment sheet (columns SIREN, optional IBAN).\n3. Pick your Slack channel. Test with SIREN 552032534.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Slack credentials.\n\n### How to customize\nAdd the Default Risk Score operation ($0.10) before granting payment terms; swap Sheets for Airtable or your ERP; route alerts to Teams or email.",
+        "height": 860,
+        "width": 500
       },
       "id": "sticky-main-t01",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-720, 0]
+      "position": [-780, -120]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Watch the payment sheet\nEvery new row with a SIREN column triggers one verification call.",
+        "height": 120,
+        "width": 400,
+        "color": 7
+      },
+      "id": "sticky-step1-t01",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 60]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Route on the verdict\npret_a_facturer = true → log as verified. Otherwise → Slack alert with the closed-list reasons (invalid VAT, deregistered company, IBAN inconsistency…).",
+        "height": 140,
+        "width": 460,
+        "color": 7
+      },
+      "id": "sticky-step2-t01",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [300, 480]
     },
     {
       "parameters": {
