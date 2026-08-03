@@ -10,6 +10,20 @@ Import them via **Workflows → Import from file** in n8n. Errors are never bill
 | [T01-verify-french-suppliers.json](T01-verify-french-suppliers.json) | Verify a French supplier before paying an invoice: identity, VAT live against VIES, IBAN + bank identification, deterministic ready-to-invoice verdict. Blocked suppliers alert Slack with closed-list reasons. | $0.03 per supplier |
 | [T02-enrich-hubspot-companies.json](T02-enrich-hubspot-companies.json) | Enrich every new HubSpot company with official registry data (SIREN, legal form, NAF, workforce, status), with a confidence-score guard and human review on homonyms. | $0.006 per company |
 
+## Screenshots
+
+**Verify French suppliers before paying invoices** ([T01](T01-verify-french-suppliers.json))
+
+![Verify French suppliers workflow](T01-canvas.png)
+
+**Enrich new HubSpot companies with official French registry data** ([T02](T02-enrich-hubspot-companies.json))
+
+![HubSpot enrichment workflow](T02-canvas.png)
+
+**Chat with the French company registry** ([T10](T10-chat-french-registry-mcp.json))
+
+![MCP chat agent workflow](T10-canvas.png)
+
 ## Requirements
 
 - **T10**: any n8n ≥ 1.88 (MCP Client Tool node) + chat-model credentials. Nothing else.
