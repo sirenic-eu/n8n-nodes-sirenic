@@ -1,0 +1,185 @@
+{
+  "name": "Verify French suppliers before paying invoices with Sirenic and Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Verify French suppliers before paying invoices\n\n**Who's it for** — Finance and accounts-payable teams paying French suppliers.\n\n**What it does** — Every new supplier row added to your payment sheet is checked against official French registries in ONE call ($0.03): legal identity, intra-EU VAT verified live against VIES, IBAN structure + bank identification, and a deterministic `pret_a_facturer` (ready-to-invoice) verdict with closed-list reasons.\n\n**How it works** — Sheets row → Sirenic *Verify French Supplier* → IF verdict → log as verified, or alert #purchasing on Slack with the exact reasons (invalid VAT, deregistered company, IBAN inconsistency…).\n\n**Setup**\n1. Install the Sirenic community node (`n8n-nodes-sirenic`) — self-hosted.\n2. Create your Sirenic credentials.\n3. Pick your Google Sheet (columns: `SIREN`, `IBAN` optional) in both Sheets nodes.\n4. Pick your Slack channel.\n\n⚠️ Not a payee verification: the account holder name is never checked. Errors are never billed.",
+        "height": 620,
+        "width": 480
+      },
+      "id": "sticky-main-t01",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-720, 0]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "trigger-sheets-t01",
+      "name": "New supplier to pay",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [-160, 240]
+    },
+    {
+      "parameters": {
+        "resource": "invoicing",
+        "operation": "getFrenchPack",
+        "siren": "={{ $json.SIREN }}",
+        "iban": "={{ $json.IBAN || '' }}"
+      },
+      "id": "sirenic-verify-t01",
+      "name": "Verify supplier before payment",
+      "type": "n8n-nodes-sirenic.sirenic",
+      "typeVersion": 1,
+      "position": [80, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-verdict",
+              "leftValue": "={{ $json.verdict.pret_a_facturer }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-verdict-t01",
+      "name": "Ready to invoice?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [320, 240]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SIREN": "={{ $('New supplier to pay').item.json.SIREN }}",
+            "Supplier": "={{ $json.destinataire.destinataire.denomination }}",
+            "Status": "OK — ready to invoice",
+            "VAT (VIES)": "={{ $json.tva_vies ? $json.tva_vies.statut : 'not checked' }}",
+            "Checked at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "sheets-ok-t01",
+      "name": "Log as verified",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [580, 120]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "=:no_entry: *Supplier blocked before payment*\nSIREN {{ $('New supplier to pay').item.json.SIREN }} — {{ $json.destinataire.destinataire.denomination }}\n*Reasons:* {{ ($json.verdict.raisons || []).join(', ') }}\nVAT (VIES): {{ $json.tva_vies ? $json.tva_vies.statut : 'not checked' }} · IBAN: {{ $json.banque ? ($json.banque.valide ? 'structure valid — ' + ($json.banque.banque.identifiee ? $json.banque.banque.nom : 'bank not identified') : 'INVALID') : 'not provided' }}\nSource: {{ $json.source }}",
+        "otherOptions": {}
+      },
+      "id": "slack-blocked-t01",
+      "name": "Alert purchasing on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [580, 360]
+    }
+  ],
+  "connections": {
+    "New supplier to pay": {
+      "main": [
+        [
+          {
+            "node": "Verify supplier before payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify supplier before payment": {
+      "main": [
+        [
+          {
+            "node": "Ready to invoice?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready to invoice?": {
+      "main": [
+        [
+          {
+            "node": "Log as verified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert purchasing on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
