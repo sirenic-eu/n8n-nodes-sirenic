@@ -16,11 +16,15 @@ payment on Base. You bring a wallet, you set a spending cap, you are done. Price
 ![Verifying a French supplier from n8n](media/demo-sirenic-node.gif)
 
 Sixteen seconds, no commentary: open the Sirenic node, pick *Supplier Verification
-& Invoicing → Verify French Supplier*, enter a SIREN, run it. **Dry Run** is on, so
-the call reports what it would cost (`would_pay_usd`) and settles nothing — the node
-always states a price before spending. Turn it off and the same step returns the
-verification itself: legal identity, VAT checked live against VIES, IBAN and bank,
-and a deterministic ready-to-invoice verdict.
+& Invoicing → Verify French Supplier*, enter a SIREN, run it. This is a real paid
+call against the live API — the output is the actual verification file for Danone:
+legal name and status, the computed intra-EU VAT number checked live against VIES,
+the head office and its nineteen establishments. It cost $0.03, settled in USDC on
+Base, with no account and no API key.
+
+Not sure what a call will cost? Switch on the **Dry Run** option: the node fetches
+the quote, reports `would_pay_usd`, and settles nothing. It states the price before
+it spends.
 
 Video file: [media/demo-sirenic-node.mp4](media/demo-sirenic-node.mp4).
 
