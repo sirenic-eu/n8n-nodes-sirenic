@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 — 2026-08-03
+
+Documentation only, no code change.
+
+The demo recording is now linked with absolute URLs. The npm package ships `dist/`
+alone, so a relative path rendered as a broken image on npmjs.com — which is exactly
+where someone evaluating the node looks first.
+
 ## 0.5.0 — 2026-08-03
 
 ### Sirenic Trigger

@@ -13,7 +13,7 @@ payment on Base. You bring a wallet, you set a spending cap, you are done. Price
 
 ## The node in use
 
-![Verifying a French supplier from n8n](media/demo-sirenic-node.gif)
+![Verifying a French supplier from n8n](https://raw.githubusercontent.com/sirenic-eu/n8n-nodes-sirenic/main/media/demo-sirenic-node.gif)
 
 Sixteen seconds, no commentary: open the Sirenic node, pick *Supplier Verification
 & Invoicing → Verify French Supplier*, enter a SIREN, run it. This is a real paid
@@ -26,7 +26,7 @@ Not sure what a call will cost? Switch on the **Dry Run** option: the node fetch
 the quote, reports `would_pay_usd`, and settles nothing. It states the price before
 it spends.
 
-Video file: [media/demo-sirenic-node.mp4](media/demo-sirenic-node.mp4).
+Full video: [demo-sirenic-node.mp4](https://github.com/sirenic-eu/n8n-nodes-sirenic/blob/main/media/demo-sirenic-node.mp4?raw=1).
 
 ## Use case #1 — Verify a supplier before payment
 
