@@ -11,6 +11,19 @@ Sirenic is paid per call over [x402](https://x402.org): each request settles a s
 payment on Base. You bring a wallet, you set a spending cap, you are done. Prices run from
 **$0.001** to **$2.00** per call, and you only pay for calls that succeed.
 
+## The node in use
+
+![Verifying a French supplier from n8n](media/demo-sirenic-node.gif)
+
+Sixteen seconds, no commentary: open the Sirenic node, pick *Supplier Verification
+& Invoicing → Verify French Supplier*, enter a SIREN, run it. **Dry Run** is on, so
+the call reports what it would cost (`would_pay_usd`) and settles nothing — the node
+always states a price before spending. Turn it off and the same step returns the
+verification itself: legal identity, VAT checked live against VIES, IBAN and bank,
+and a deterministic ready-to-invoice verdict.
+
+Video file: [media/demo-sirenic-node.mp4](media/demo-sirenic-node.mp4).
+
 ## Use case #1 — Verify a supplier before payment
 
 The deadline is not ours: from **1 September 2026** every French company subject to VAT must
