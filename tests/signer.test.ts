@@ -25,10 +25,16 @@ import {
 } from '../nodes/Sirenic/signer';
 import { buildPaymentPayload } from '../nodes/Sirenic/x402';
 
-/** Throwaway keys — test vectors only, never funded. */
+/**
+ * Throwaway keys — test vectors only, never funded. The disables below are the
+ * rule's own escape hatch: tests are not published (package.json `files` ships
+ * dist only), and these are the well-known public vectors.
+ */
+/* eslint-disable @n8n/community-nodes/no-hardcoded-secrets */
 const KEY_A = '0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318';
 const KEY_B = '0x0000000000000000000000000000000000000000000000000000000000000001';
 const KEY_C = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+/* eslint-enable @n8n/community-nodes/no-hardcoded-secrets */
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const PAY_TO = '0x76A672EEe56D29D475b0715cc03B8C99D70EC8A2';
