@@ -341,9 +341,11 @@ export class SirenicTrigger implements INodeType {
 				if (etat.jeton && !memesCibles(etat.cibles ?? [], cibles.cles)) {
 					try {
 						await arreterSurveillance.call(this, etat.jeton);
-					} catch {
+					} catch (error) {
 						// Already gone, or unreachable. Either way the new watch is what
-						// matters, and the old one expires on its own.
+						// matters, and the old one expires on its own — so this is logged,
+						// never rethrown: it must not block the activation.
+						this.logger?.debug('Could not stop old watch: ' + String(error));
 					}
 					oublierSurveillance(etat);
 				}
