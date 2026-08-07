@@ -65,7 +65,6 @@ export const DEFAULT_OPERATION: Record<string, string> = {
 	europeanCompany: 'search',
 	invoicing: 'getFrenchPack',
 	people: 'searchDirectors',
-	monitoring: 'watch',
 };
 
 /** Operation options of a resource, derived from the catalogue. */
@@ -162,15 +161,6 @@ const PROPERTIES: INodeProperties[] = [
 		default: 'searchDirectors',
 		displayOptions: { show: { resource: ['people'] } },
 		options: operationOptions('people'),
-	},
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		default: 'watch',
-		displayOptions: { show: { resource: ['monitoring'] } },
-		options: operationOptions('monitoring'),
 	},
 	...RESOURCES.flatMap(resourceFields),
 	{

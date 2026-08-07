@@ -27,12 +27,13 @@ describe('operation catalogue', () => {
 				expect(findOperation(r.value, op.value), key).toBeDefined();
 			}
 		}
-		// 42 = 40 paid BASE routes (50 in the production price list as of
+		// 38 = 40 paid BASE routes (50 in the production price list as of
 		// 2026-07-29, minus the 9 dedicated per-country routes that go through the
 		// generic EU profile, minus /comptes-pdf which production disabled on
-		// 2026-07-29) + the 2 FREE surveillance read-back routes, without which a
-		// paid watch can be unreachable on a self-hosted instance.
-		expect(seen.size).toBe(42);
+		// 2026-07-29) minus the 2 paid surveillance routes, which moved to the
+		// Sirenic Trigger: a subscription belongs to the node that owns its
+		// lifecycle, not to a catalogue of one-shot lookups.
+		expect(seen.size).toBe(38);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {
@@ -44,13 +45,11 @@ describe('operation catalogue', () => {
 			query: 'a&b/c',
 			siren: '552032534',
 			since: '2026-01-01',
-			targets: '552032534,542065479',
 			regulatorName: 'a&b/c',
 			iban: 'FR7630006000011234567890189',
 			// Builders that refuse an unserved value need a served one here: their
 			// own guards are covered in query-contract.test.ts.
 			country: 'BE',
-			email: 'watch@example.com',
 		};
 		const trap = (name: string) => plausible[name] ?? 'x&y/z';
 		for (const r of RESOURCES) {

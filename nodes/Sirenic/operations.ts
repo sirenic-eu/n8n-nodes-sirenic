@@ -10,7 +10,7 @@
  * money must say so before they click, not after.
  *
  * Note on the URLs below: path segments and query-string keys (`recherche`,
- * `entreprise`, `cibles`, `pays`…) are the upstream Sirenic API's own names.
+ * `entreprise`, `pays`…) are the upstream Sirenic API's own names.
  * They are the remote contract, not identifiers of this package, so they are
  * reproduced verbatim.
  */
@@ -815,131 +815,6 @@ export const RESOURCES: Resource[] = [
 						placeholder: '2',
 						description:
 							'Page of results to fetch, 100 per page. The response says whether another page exists; each page is a separate paid call.',
-					},
-				],
-			},
-		],
-	},
-
-	{
-		value: 'monitoring',
-		name: 'Monitoring',
-		operations: [
-			{
-				value: 'watch',
-				name: 'Watch Companies',
-				action: 'Watch companies for changes',
-				description:
-					'Company monitoring for France: watch one to 100 companies and get notified when something changes — officers, insolvency, deregistration. Point the webhook at an n8n Webhook node to trigger a workflow; the URL must be public HTTPS on port 443 (a localhost or private address is refused), so give an e-mail digest instead on a self-hosted instance. Detection is daily, aligned on how often the official sources publish. ($0.05 PER TARGET for 30 days, so $5.00 for 100 — set Max Amount Per Call accordingly).',
-				path: (p) => {
-					if (!p('webhook') && !p('email')) {
-						throw new Error(
-							'Watch Companies needs a Webhook URL or an Email address: without one there is no way to receive the events, and the watch is paid for nothing. On a self-hosted n8n the webhook must be public HTTPS on port 443 — use the e-mail digest instead.',
-						);
-					}
-					const q = new URLSearchParams({ cibles: p('targets') });
-					if (p('webhook')) q.set('webhook', p('webhook'));
-					if (p('email')) q.set('email', p('email'));
-					return `/v1/surveillance/creer?${q.toString()}`;
-				},
-				fields: [
-					{
-						name: 'targets',
-						label: 'Targets',
-						type: 'string',
-						required: true,
-						placeholder: '552032534,542065479',
-						description:
-							'One to 100 comma-separated entries: nine-digit SIRENs, or "dirigeant:Name" to follow the mandates of a person.',
-					},
-					{
-						name: 'webhook',
-						label: 'Webhook URL',
-						type: 'string',
-						description:
-							'Public HTTPS URL notified when something changes. Paste the Production URL of an n8n Webhook node to trigger a workflow.',
-					},
-					{
-						name: 'email',
-						label: 'Email',
-						type: 'string',
-						placeholder: 'name@email.com',
-						description: 'Optional address for digest emails.',
-					},
-				],
-			},
-			{
-				value: 'getWatch',
-				name: 'Get Watch',
-				action: 'Read the state and events of a watch',
-				description:
-					'State of a watch and its 100 most recent events, by token. FREE — this route is not metered, so it costs nothing and needs no payment. Use it to pull the events when a webhook cannot reach your instance.',
-				path: (p) => `/v1/surveillance/${enc(p('watchToken'))}`,
-				fields: [
-					{
-						name: 'watchToken',
-						label: 'Watch Token',
-						type: 'string',
-						required: true,
-						typeOptions: { password: true },
-						description: 'Token returned when the watch was created.',
-					},
-				],
-			},
-			{
-				value: 'stopWatch',
-				name: 'Stop Watch',
-				action: 'Stop a watch',
-				description: 'Stop a watch before its expiry. FREE — this route is not metered.',
-				path: (p) => `/v1/surveillance/${enc(p('watchToken'))}/arreter`,
-				fields: [
-					{
-						name: 'watchToken',
-						label: 'Watch Token',
-						type: 'string',
-						required: true,
-						typeOptions: { password: true },
-						description: 'Token returned when the watch was created.',
-					},
-				],
-			},
-			{
-				value: 'renew',
-				name: 'Renew Watch',
-				action: 'Renew an existing watch',
-				description:
-					'Extend a watchlist for another period. Grace period of seven days after expiry. ($0.05 per target).',
-				// Renewal is priced per target like creation, so the API requires the
-				// target list again — and it must be the SAME list, or the renewal
-				// is refused. Sending only the token gets a 400 every time.
-				path: (p) => {
-					const targets = p('targets');
-					if (!targets) {
-						throw new Error(
-							'Renew Watch needs the same "Targets" list the watch was created with (comma-separated) — the API prices the renewal per target and refuses a different list.',
-						);
-					}
-					return `/v1/surveillance/${enc(p('watchToken'))}/renouveler?${new URLSearchParams({ cibles: targets }).toString()}`;
-				},
-				fields: [
-					{
-						name: 'watchToken',
-						label: 'Watch Token',
-						type: 'string',
-						required: true,
-						typeOptions: { password: true },
-						description: 'Token returned when the watch was created.',
-					},
-					// Declared so the shared "Targets" field is also shown for this
-					// operation; the definition above (Create Watch) is the one used.
-					{
-						name: 'targets',
-						label: 'Targets',
-						type: 'string',
-						required: true,
-						placeholder: '552032534,542065479',
-						description:
-							'The same comma-separated target list the watch was created with.',
 					},
 				],
 			},

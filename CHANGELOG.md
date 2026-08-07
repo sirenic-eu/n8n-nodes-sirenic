@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.6.0 — 2026-08-06
+
+### The watch lifecycle moved into the Sirenic Trigger
+
+n8n's review asked for it, and they were right: a subscription where the caller
+hands over the URL is their trigger pattern, not a set of one-shot actions.
+Watch Companies, Get Watch, Stop Watch and Renew Watch have left the Sirenic
+node. The trigger now owns the whole thing, and there is nothing to copy across
+between two nodes any more.
+
+- **Activating the workflow creates the watch** and pays for it — $0.05 per
+  target for 30 days, $5.00 for the maximum of 100. The URL registered is the
+  node's own production URL.
+- **Deactivating keeps it**, by default: the watch is prepaid for 30 days and
+  stopping it early forfeits the rest. A switch stops and purges it instead.
+- **Re-activating pays nothing.** `checkExists` reads the stored watch back
+  through the free route; only a watch Sirenic reports as gone leads to a new,
+  paid one.
+- **A test listen never pays.** n8n runs these same hooks for "Listen for test
+  event", against a throwaway URL — so the node refuses rather than buy a watch
+  that would post into the void.
+- **An unreachable API fails the activation** instead of assuming the watch
+  vanished and paying for a second one.
+- **Renewal happens before expiry**, at the same price per target. Turned off,
+  the node emits a `surveillance_expiree` item: an active workflow whose watch
+  has quietly expired looks monitored and is not.
+- **Polling delivery creates a channel-less watch**, so a self-hosted n8n that
+  Sirenic cannot call still works — the node reads the events for free.
+
+### Breaking
+
+- The **Monitoring** resource is gone from the Sirenic node, which now exposes 38
+  operations instead of 42. A workflow built on Watch Companies, Get Watch, Stop
+  Watch or Renew Watch moves to the Sirenic Trigger. A watch created outside n8n
+  keeps working: set **Watch** to *Already created elsewhere* and paste its token.
+- The trigger asks for the Sirenic API credential **when it manages the watch**.
+  It still needs none to receive the events of a watch created elsewhere.
+
+### Tests
+
+81 pass (was 71): 13 new ones pin the money rules above — no payment on a test
+listen, no second payment on re-activation, no payment when the API is silent.
+
 ## 0.5.1 — 2026-08-03
 
 Documentation only, no code change.
