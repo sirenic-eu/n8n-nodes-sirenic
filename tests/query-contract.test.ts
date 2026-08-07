@@ -56,13 +56,6 @@ describe('query contract — parameters the API requires', () => {
 		expect(() => build('compliance', 'getRegulatorAlerts')).toThrow(/Name to Screen/);
 	});
 
-	it('renew sends the target list again (it is priced per target)', () => {
-		expect(
-			build('monitoring', 'renew', { watchToken: 'sw_abc', targets: '552032534,542065479' }),
-		).toBe('/v1/surveillance/sw_abc/renouveler?cibles=552032534%2C542065479');
-		expect(() => build('monitoring', 'renew', { watchToken: 'sw_abc' })).toThrow(/Targets/);
-	});
-
 	it('prospect uses effectif_min/effectif_max — a headcount filter must never be dropped in silence', () => {
 		const path = build('people', 'prospect', {
 			nafCode: '62.01Z',
@@ -133,20 +126,6 @@ describe('slow routes: the client must not give up before the API settles', () =
 		).toBe('/v1/eu/entreprise/BE/0428750985/transactions-dirigeants');
 	});
 
-	it('a watch with no delivery channel is refused before it is paid for', () => {
-		expect(() => build('monitoring', 'watch', { targets: '552032534' })).toThrow(/Webhook URL or an Email/);
-		expect(build('monitoring', 'watch', { targets: '552032534', email: 'a@b.c' })).toContain(
-			'email=a%40b.c',
-		);
-	});
-
-	it('the free read-back routes exist, so a watch is never unreachable', () => {
-		expect(build('monitoring', 'getWatch', { watchToken: 'sw_abc' })).toBe('/v1/surveillance/sw_abc');
-		expect(build('monitoring', 'stopWatch', { watchToken: 'sw_abc' })).toBe(
-			'/v1/surveillance/sw_abc/arreter',
-		);
-	});
-
 	it('every field an operation READS is also declared by that operation', () => {
 		// The bug this catches: a field declared on the wrong resource is never
 		// generated, so the value is always empty and the parameter never sent —
@@ -157,7 +136,7 @@ describe('slow routes: the client must not give up before the API settles', () =
 				try {
 					op.path((name) => {
 						lus.add(name);
-						return { since: '2026-01-01', targets: '1', country: 'BE', webhook: 'https://x.tld/h' }[name] ?? 'v';
+						return { since: '2026-01-01', country: 'BE' }[name] ?? 'v';
 					});
 				} catch {
 					// A builder may refuse on purpose; the names it read still count.

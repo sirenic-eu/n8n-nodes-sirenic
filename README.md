@@ -73,7 +73,7 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
 | **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
-| **Watch Companies** | 1 to 100 companies, notified when something changes | $0.05 |
+| **Sirenic Trigger** | Starts a workflow when a watched company changes — 1 to 100 of them | $0.05 per target |
 
 Every paid answer carries its source, its freshness date and an Ed25519 signature, so an
 audit trail comes for free.
@@ -93,19 +93,27 @@ The verdict is deterministic and its reasons come from a closed list, so the *fa
 can be routed on the reason itself (ceased company, VAT invalid at VIES, invalid IBAN) rather
 than on free text. The signed response is the audit trail your accountant will ask for.
 
-### Supplier monitoring — three nodes
+### Supplier monitoring — one node
 
-**Watch Companies** takes a webhook URL. Point it at an n8n **Webhook** node and you have
-supplier monitoring in three nodes:
+The **Sirenic Trigger** owns the watch from end to end. Give it 1 to 100 SIRENs and
+activate the workflow: it registers them with Sirenic against its own URL, receives the
+signed events, and renews the watch before it runs out.
 
 ```
-[Sirenic: Watch Companies] ──▶ (registers 1-100 suppliers, once)
-
-[Webhook] ──▶ [Filter: insolvency] ──▶ [Slack]
+[Sirenic Trigger] ──▶ [Filter: insolvency] ──▶ [Slack]
       ▲
-      └── Sirenic calls this whenever an officer changes, an insolvency
-          is published, or a company is struck off.
+      └── fires whenever an officer changes, an insolvency is published,
+          or a company is struck off.
 ```
+
+Activating the workflow **pays** for the watch: $0.05 per target for 30 days, so $5.00 for
+the maximum of 100 — raise *Max Amount Per Call* on the credential accordingly. Nothing
+else spends anything: re-activating re-uses the watch it already bought, a test listen
+refuses to create one, and deactivating keeps the days you have paid for.
+
+Sirenic only calls a **public HTTPS URL on port 443**. A self-hosted n8n the internet
+cannot reach must set **Delivery** to *Polling*: the watch is then created with no webhook
+channel and the node reads its events back for free.
 
 Detection runs **daily**, aligned on how often the official sources publish — the BODACC
 issues one edition a day. Nobody can honestly offer real time on registry data.
