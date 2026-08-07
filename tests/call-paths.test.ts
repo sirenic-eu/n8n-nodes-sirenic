@@ -10,6 +10,7 @@ import { NETWORK, SirenicPayer, USDC } from '../nodes/Sirenic/x402';
 
 const PAY_TO = '0x76A672EEe56D29D475b0715cc03B8C99D70EC8A2';
 // Test-only key (never used anywhere): the dry run stops before signing anyway.
+// eslint-disable-next-line @n8n/community-nodes/no-hardcoded-secrets -- unfunded test vector, and tests are not published (package.json `files` ships dist only)
 const KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
 
 const settings = {

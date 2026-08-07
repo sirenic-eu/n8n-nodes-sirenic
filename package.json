@@ -87,7 +87,7 @@
   },
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "^0.27.0",
-    "@n8n/node-cli": "^0.41.2",
+    "@n8n/node-cli": "^0.42.1",
     "@types/node": "^22.0.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.29.0",
