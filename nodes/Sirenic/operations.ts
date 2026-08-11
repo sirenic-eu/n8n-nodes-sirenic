@@ -382,6 +382,66 @@ export const RESOURCES: Resource[] = [
 		name: 'Due Diligence',
 		operations: [
 			{
+				value: 'searchBodacc',
+				name: 'Search BODACC Announcements',
+				action: 'Search BODACC announcements by criteria',
+				description:
+					'The other direction: not "is THIS company in trouble" but "WHICH companies are". Search the BODACC legal gazette by family (insolvency proceedings, deregistrations, sales, incorporations, accounts filings...), date window and optionally a French department — up to 100 announcements, newest first, each with its SIREN, court and town. Built for scheduled monitoring: run it daily on your department and route what comes out. Two caveats carried by the response: announcements about SOLE TRADERS are excluded (their name is personal data) and counted, and the judgment is served STRUCTURED — its free text is removed everywhere because it names court-appointed administrators with their address. ($0.03).',
+				path: (p) =>
+					`/v1/bodacc/recherche?famille=${enc(p('famille'))}&depuis=${enc(p('depuis'))}` +
+					`${p('jusquA') ? `&jusqu_a=${enc(p('jusquA'))}` : ''}` +
+					`${p('departementBodacc') ? `&departement=${enc(p('departementBodacc'))}` : ''}`,
+				fields: [
+					{
+						name: 'famille',
+						label: 'Family',
+						type: 'options',
+						required: true,
+						default: 'collective',
+						description:
+							'Announcement family. These are the upstream BODACC codes, not translations.',
+						options: [
+							{ name: 'Insolvency Proceedings (Collective)', value: 'collective' },
+							{ name: 'Accounts Filings (Largest Family)', value: 'dpc' },
+							{ name: 'Deregistrations', value: 'radiation' },
+							{ name: 'Sales and Transfers', value: 'vente' },
+							{ name: 'Incorporations', value: 'creation' },
+							{ name: 'Registrations', value: 'immatriculation' },
+							{ name: 'Miscellaneous Changes', value: 'modification' },
+							{ name: 'Conciliation Proceedings', value: 'conciliation' },
+							{ name: 'Professional Recovery (Sole Traders Only)', value: 'retablissement_professionnel' },
+						],
+					},
+					{
+						name: 'depuis',
+						label: 'Published Since',
+						type: 'string',
+						required: true,
+						default: '',
+						placeholder: '2026-08-04',
+						description:
+							'Start of the publication window, YYYY-MM-DD. Required: there is no unbounded search. The window may not exceed 366 days.',
+					},
+					{
+						name: 'jusquA',
+						label: 'Published Until',
+						type: 'string',
+						default: '',
+						placeholder: '2026-08-11',
+						description: 'Optional end of the publication window, YYYY-MM-DD.',
+					},
+					{
+						name: 'departementBodacc',
+						label: 'Department',
+						type: 'string',
+						default: '',
+						placeholder: '59',
+						description:
+							'Optional French department code: 01-95 except 20, 2A, 2B, 971-978. The Corsican 20 is refused (it is 2A/2B, and carries no announcement).',
+					},
+				],
+			},
+			{
 				value: 'getFile',
 				name: 'Get Company File (Pick Blocks)',
 				action: 'Get a company file with chosen blocks',

@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.10.0 — 2026-08-11
+
+### Search the BODACC gazette by criteria, not by company
+
+**Due Diligence → Search BODACC Announcements** ($0.03) answers the other
+direction: not *is this company in trouble* but **which companies are**. Pick a
+family (insolvency proceedings, accounts filings, deregistrations, sales,
+incorporations, conciliation…), a publication window and optionally a French
+department; get up to 100 announcements, newest first, each with its SIREN, court
+and town.
+
+It is built for a scheduled workflow: run it every morning on your department and
+route what comes out.
+
+Two limits the response carries itself, and they are deliberate:
+
+- **Sole traders are excluded** — their name is personal data — and their number
+  is returned in `exclues_personnes_physiques`, so an empty answer is never
+  ambiguous. Records whose person type the gazette leaves unreadable are excluded
+  too and counted apart in `exclues_type_indetermine`.
+- **The judgment is STRUCTURED** (nature, date, family). Its operative free text
+  is removed everywhere, because it names court-appointed administrators together
+  with their address. Facts that live only in that text — the date of cessation
+  of payments, for one — are therefore not in the response: follow the
+  `url_bodacc` field to the official publication.
+
+It is now the first operation of the Due Diligence resource.
+
 ## 0.9.0 — 2026-08-11
 
 ### Watch duration: 30, 90 or 365 days, cheaper the longer you commit

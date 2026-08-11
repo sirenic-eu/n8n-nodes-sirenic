@@ -68,7 +68,7 @@ export const DEFAULT_OPERATION: Record<string, string> = {
 	frenchCompany: 'suggest',
 	// 0.8.0 : la fiche à la carte passe devant, c'est le « un seul appel »
 	// que cherche un intégrateur n8n (le KYB reste juste en dessous).
-	dueDiligence: 'getFile',
+	dueDiligence: 'searchBodacc',
 	financials: 'getFinancials',
 	compliance: 'screenSanctions',
 	procurement: 'getFrench',
@@ -118,7 +118,7 @@ const PROPERTIES: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'getFile',
+		default: 'searchBodacc',
 		displayOptions: { show: { resource: ['dueDiligence'] } },
 		options: operationOptions('dueDiligence'),
 	},

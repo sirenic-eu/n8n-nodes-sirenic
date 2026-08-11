@@ -52,17 +52,19 @@ describe('operation catalogue', () => {
 				expect(findOperation(r.value, op.value), key).toBeDefined();
 			}
 		}
-		// 40 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
+		// 41 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
 		// autocomplete added in 0.7.0 — the only operation that costs nothing)
 		// + 1 modular (dueDiligence:getFile, the à-la-carte company file of 0.8.0,
-		// whose price depends on the blocks asked for).
+		// whose price depends on the blocks asked for)
+		// + 1 criteria search (dueDiligence:searchBodacc, 0.10.0 — the BODACC gazette
+		// searched by family/date/department instead of by company).
 		// The 38 paid ones = 40 paid BASE routes (50 in the production price list
 		// as of 2026-07-29, minus the 9 dedicated per-country routes that go
 		// through the generic EU profile, minus /comptes-pdf which production
 		// disabled on 2026-07-29) minus the 2 paid surveillance routes, which
 		// moved to the Sirenic Trigger: a subscription belongs to the node that
 		// owns its lifecycle, not to a catalogue of one-shot lookups.
-		expect(seen.size).toBe(40);
+		expect(seen.size).toBe(41);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {
