@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# Auth npm : reference une variable du .env de prod, jamais un jeton en clair.
+.npmrc
