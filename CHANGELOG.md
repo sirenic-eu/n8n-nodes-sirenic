@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.8.0 — 2026-08-11
+
+### Get Company File: one call, pick your blocks
+
+**Due Diligence → Get Company File (Pick Blocks)** returns the identity base
+plus only the blocks you ask for: `etablissements`, `alertes_bodacc`,
+`finances`, `marches_publics`, `marches_publics_ue`, `lobbying`,
+`risques_industriels`, `agrements`, `pi`, `documents`, `facturation_prep`,
+`score`.
+
+- **Grouping never costs more than calling separately.** Each block is priced at
+  exactly what its own operation costs, on top of a $0.005 identity base, and
+  the total is capped at $0.35. Duplicates are billed once.
+- **A block that cannot be served is NAMED, with a reason**: `aucune_donnee` (a
+  negative answer — the company has no patents, no public contracts),
+  `non_diffusible` (partial Sirene diffusion / GDPR guard) or `panne_amont`
+  (upstream register down). If EVERY requested block is down, the call returns
+  503 and nothing is charged.
+- It is a **dump of facts**, not a verdict. For a verdict, use *Get Intelligence
+  Report* ($1.00).
+- It is now the first operation of the Due Diligence resource.
+
+### Fixed: the 0.7.0 default never actually changed
+
+0.7.0 claimed *Suggest Names* had become the default operation of the French
+Company resource. **It had not.** The change was made to an internal table that
+nothing reads; the dropdown that n8n actually shows kept its own literal, so the
+node still opened on the paid *Search Company*. Both dropdowns are corrected in
+this release, and a new test reads the literals n8n really uses — the previous
+test only checked the unused table, which is why the mistake shipped.
+
 ## 0.7.0 — 2026-08-11
 
 ### A free operation, and it is the new default

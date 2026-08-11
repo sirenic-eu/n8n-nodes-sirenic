@@ -382,6 +382,27 @@ export const RESOURCES: Resource[] = [
 		name: 'Due Diligence',
 		operations: [
 			{
+				value: 'getFile',
+				name: 'Get Company File (Pick Blocks)',
+				action: 'Get a company file with chosen blocks',
+				description:
+					'One call instead of ten: the identity base plus only the blocks you ask for. Available blocks: etablissements, alertes_bodacc, finances, marches_publics, marches_publics_ue, lobbying, risques_industriels, agrements, pi, documents, facturation_prep, score. Each block costs exactly what its own operation costs, so grouping never costs more than calling separately, and the total is capped at $0.35. A block that cannot be served is named with its reason. ($0.005 base + per block, max $0.35).',
+				path: (p) => `/v1/entreprise/${enc(p('siren'))}/dossier?blocs=${enc(p('blocs'))}`,
+				fields: [
+					SIREN,
+					{
+						name: 'blocs',
+						label: 'Blocks',
+						type: 'string',
+						required: true,
+						default: 'finances,score',
+						placeholder: 'finances,pi,score',
+						description:
+							'Comma-separated blocks to add to the identity base. An unknown name returns 400 and nothing is charged.',
+					},
+				],
+			},
+			{
 				value: 'getKyb',
 				name: 'Get KYB File',
 				action: 'Get a full KYB file',

@@ -55,13 +55,20 @@ function resourceFields(resource: (typeof RESOURCES)[number]): INodeProperties[]
  * and does not follow `RESOURCES[0].operations[0].value`. So it is written out
  * by hand — and a test checks that each value really is the first operation of
  * its resource, so this duplication cannot drift.
+ *
+ * ⚠️ This table is DOCUMENTATION, not behaviour: the values the UI actually uses
+ * are the `default:` literals of the Operation dropdowns in PROPERTIES below.
+ * Changing this table alone changes NOTHING for the user — that mistake shipped
+ * in 0.7.0. The test now checks all three copies agree.
  */
 export const DEFAULT_OPERATION: Record<string, string> = {
 	// 0.7.0 — the default is now the FREE name autocomplete: a node dropped into
 	// a canvas and run once should not spend the user's money to show what it
 	// does. Existing workflows are unaffected (they store their operation).
 	frenchCompany: 'suggest',
-	dueDiligence: 'getKyb',
+	// 0.8.0 : la fiche à la carte passe devant, c'est le « un seul appel »
+	// que cherche un intégrateur n8n (le KYB reste juste en dessous).
+	dueDiligence: 'getFile',
 	financials: 'getFinancials',
 	compliance: 'screenSanctions',
 	procurement: 'getFrench',
@@ -98,7 +105,11 @@ const PROPERTIES: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'search',
+		// ⚠️ 0.8.0 — CE littéral est le vrai défaut du menu déroulant. En 0.7.0 je
+		// n'avais changé que `DEFAULT_OPERATION`, que RIEN ne lit : le paquet
+		// publié ouvrait donc toujours sur l'opération PAYANTE, contrairement à ce
+		// que son changelog annonçait. Le test vérifie désormais CES littéraux.
+		default: 'suggest',
 		displayOptions: { show: { resource: ['frenchCompany'] } },
 		options: operationOptions('frenchCompany'),
 	},
@@ -107,7 +118,7 @@ const PROPERTIES: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'getKyb',
+		default: 'getFile',
 		displayOptions: { show: { resource: ['dueDiligence'] } },
 		options: operationOptions('dueDiligence'),
 	},

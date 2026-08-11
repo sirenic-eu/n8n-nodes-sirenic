@@ -6,10 +6,35 @@
  * been charged.
  */
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_OPERATION } from '../nodes/Sirenic/Sirenic.node';
+import { DEFAULT_OPERATION, Sirenic } from '../nodes/Sirenic/Sirenic.node';
 import { RESOURCES, findOperation } from '../nodes/Sirenic/operations';
 
 describe('operation catalogue', () => {
+	// ⚠️ LE test qui compte, ajouté en 0.8.0 après un raté réel : en 0.7.0 j'avais
+	// changé DEFAULT_OPERATION en croyant changer le défaut du menu, alors que
+	// RIEN ne lit cette table — le paquet publié ouvrait toujours sur l'opération
+	// PAYANTE, contrairement à son changelog. Ce test lit les littéraux
+	// `default:` des menus déroulants RÉELLEMENT servis à n8n.
+	it("le défaut de CHAQUE menu déroulant est la première opération de sa ressource", () => {
+		const proprietes = new Sirenic().description.properties as Array<{
+			name: string;
+			default?: unknown;
+			displayOptions?: { show?: { resource?: string[] } };
+		}>;
+		const menus = proprietes.filter(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.length === 1,
+		);
+		// Une ressource sans menu passerait inaperçue : on exige la couverture.
+		expect(menus.length).toBe(RESOURCES.length);
+		for (const menu of menus) {
+			const ressource = menu.displayOptions!.show!.resource![0] as string;
+			const premiere = RESOURCES.find((r) => r.value === ressource)?.operations[0]?.value;
+			expect(menu.default, `menu de ${ressource}`).toBe(premiere);
+			// Et la table de documentation doit dire la même chose que le menu.
+			expect(DEFAULT_OPERATION[ressource], `DEFAULT_OPERATION.${ressource}`).toBe(premiere);
+		}
+	});
+
 	it('DEFAULT_OPERATION = first operation of each resource (duplication required by the linter, locked here)', () => {
 		expect(Object.keys(DEFAULT_OPERATION).sort()).toEqual(RESOURCES.map((r) => r.value).sort());
 		for (const r of RESOURCES) {
@@ -27,16 +52,17 @@ describe('operation catalogue', () => {
 				expect(findOperation(r.value, op.value), key).toBeDefined();
 			}
 		}
-		// 39 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
-		// autocomplete added in 0.7.0 — it is the only operation of this catalogue
-		// that costs nothing).
+		// 40 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
+		// autocomplete added in 0.7.0 — the only operation that costs nothing)
+		// + 1 modular (dueDiligence:getFile, the à-la-carte company file of 0.8.0,
+		// whose price depends on the blocks asked for).
 		// The 38 paid ones = 40 paid BASE routes (50 in the production price list
 		// as of 2026-07-29, minus the 9 dedicated per-country routes that go
 		// through the generic EU profile, minus /comptes-pdf which production
 		// disabled on 2026-07-29) minus the 2 paid surveillance routes, which
 		// moved to the Sirenic Trigger: a subscription belongs to the node that
 		// owns its lifecycle, not to a catalogue of one-shot lookups.
-		expect(seen.size).toBe(39);
+		expect(seen.size).toBe(40);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {

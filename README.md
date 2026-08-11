@@ -71,6 +71,7 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | **Suggest Names** | "I have a name, what is its SIREN?" — up to 5 matches with city and activity code | **free** |
 | **Search Company** | "Which company is this, exactly?" — by name, with a confidence score, and it forgives typos | $0.001 |
 | **Get Company Profile** | Legal name, form, head office, activity, workforce, officers, VAT number | $0.005 |
+| **Get Company File** | Several things about one company without chaining calls — you pick the blocks | $0.005 + per block, max $0.35 |
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
 | **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
