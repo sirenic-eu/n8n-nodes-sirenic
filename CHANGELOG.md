@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.9.0 — 2026-08-11
+
+### Watch duration: 30, 90 or 365 days, cheaper the longer you commit
+
+**Sirenic Trigger** gains a **Duration** option. A watch used to last 30 days,
+full stop; it can now run 30, 90 or 365 days, and the per-target price falls as
+the commitment grows:
+
+| Duration | Per target | 100 targets | vs. paying monthly |
+| --- | --- | --- | --- |
+| 30 days | $0.05 | $5.00 | — |
+| 90 days | $0.135 | $13.50 | −10 % |
+| 365 days | $0.50 | $50.00 | −17.8 % |
+
+- **Nothing changes for existing workflows.** Duration defaults to 30 days, so a
+  workflow saved before this release keeps the exact behaviour and the exact
+  price it had.
+- **Renewals buy the current Duration**, not the original one — a 30-day watch
+  can roll over into a year.
+- **Changing Duration on an active workflow charges nothing** and does not
+  restart the watch: the current one is already paid for. The new value applies
+  at the next renewal.
+- Sirenic now emits an `expiration_proche` event 7 days before a watch expires,
+  which lines up with when this node renews.
+
+### Fixed: the credential default refused a yearly watch
+
+`Max Amount Per Call` defaulted to **$0.20**. A single target bought for a year
+quotes at **$0.50**, so the node refused it *client-side*, before the API was
+even asked. The default is now **$1.00**, and the field explains that batched
+and monitoring routes are priced per entity. Existing credentials keep their own
+stored value — only newly created ones start at the new default.
+
 ## 0.8.0 — 2026-08-11
 
 ### Get Company File: one call, pick your blocks

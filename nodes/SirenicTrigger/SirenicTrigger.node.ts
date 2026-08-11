@@ -26,7 +26,8 @@ import { cleEvenement, verifierLivraison, type CleDeSignature } from './signatur
  * they were right: two nodes shared one subscription and neither owned it.
  *
  * IT SPENDS MONEY, AND ONLY WHERE THE USER CAN SEE IT. Creating a watch costs
- * $0.05 per target for 30 days ($5.00 for the maximum of 100), so:
+ * $0.05 per target for 30 days, $0.135 for 90 days or $0.50 for a year
+ * (so $5.00, $13.50 or $50.00 for the maximum of 100 targets), so:
  *  - the paid call happens on ACTIVATION, never on "Listen for test event" —
  *    a test listen registers a throwaway URL, and paying for one would be a
  *    trap;
@@ -34,8 +35,8 @@ import { cleEvenement, verifierLivraison, type CleDeSignature } from './signatur
  *    a workflow off and on does not pay twice;
  *  - an unreachable API at activation FAILS activation rather than assume the
  *    watch is gone and pay for a second one;
- *  - deactivating keeps the watch by default: it is prepaid for 30 days, and
- *    stopping it early forfeits the rest.
+ *  - deactivating keeps the watch by default: it is prepaid for its whole
+ *    duration, and stopping it early forfeits the rest — there is no refund.
  *
  * Two delivery modes, because Sirenic refuses a webhook URL that is not public
  * HTTPS on port 443 — which rules out most self-hosted instances:
@@ -43,9 +44,10 @@ import { cleEvenement, verifierLivraison, type CleDeSignature } from './signatur
  *  - `poll`: the watch is created with no delivery channel and this node reads
  *    it back through the FREE read route. Works behind a firewall.
  *
- * RENEWAL. A watch lasts 30 days. A workflow that stays active while its watch
- * quietly expires is the worst possible outcome — it looks monitored and is
- * not — so the poll tick renews it before expiry (same price). Turn that off
+ * RENEWAL. A watch lasts 30, 90 or 365 days, as chosen in Duration. A workflow
+ * that stays active while its watch quietly expires is the worst possible
+ * outcome — it looks monitored and is not — so the poll tick renews it before
+ * expiry, buying whatever Duration is set at that moment. Turn that off
  * and the node emits a `surveillance_expiree` item instead of going silent.
  *
  * ON DUPLICATES. Sirenic sends no event id and retries a batch up to three
@@ -71,9 +73,19 @@ const MEMOIRE_DEDUP = 500;
 const MAX_CIBLES = 100;
 
 /**
- * Renew this long before expiry. Renewal adds 30 days to the CURRENT expiry
- * date, not to today, so renewing early costs nothing in coverage — and the
- * margin absorbs a poll interval measured in days.
+ * Watch durations Sirenic sells, in days. Kept in step with the API grid — a
+ * value absent from it is refused with 400 duree_invalide, and nothing is
+ * charged.
+ */
+const DUREES_VENDUES = [30, 90, 365];
+
+/**
+ * Renew this long before expiry. Renewal adds the chosen duration to the
+ * CURRENT expiry date, not to today, so renewing early costs nothing in
+ * coverage — and the margin absorbs a poll interval measured in days.
+ *
+ * Seven days is also when Sirenic emits its own expiration_proche event, so the
+ * two warnings line up instead of contradicting each other.
  */
 const MARGE_RENOUVELLEMENT_MS = 7 * 864e5;
 
@@ -167,7 +179,7 @@ export class SirenicTrigger implements INodeType {
 						name: 'Created and Managed by This Trigger',
 						value: 'managed',
 						description:
-							'Activating the workflow creates the watch and PAYS for it ($0.05 per target for 30 days, so $5.00 for the maximum of 100 — raise Max Amount Per Call on the credential accordingly). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
+							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year — raise Max Amount Per Call on the credential accordingly). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
 					},
 					{
 						name: 'Already Created Elsewhere',
@@ -187,6 +199,37 @@ export class SirenicTrigger implements INodeType {
 				displayOptions: { show: { watchSource: ['managed'] } },
 				description:
 					'One to 100 comma-separated entries: nine-digit SIRENs, or "dirigeant:Name" to follow the public mandates of a person. Changing this list after activation replaces the watch — the old one is stopped and a new one is paid for.',
+			},
+			{
+				displayName: 'Duration',
+				name: 'duree',
+				type: 'options',
+				default: 30,
+				displayOptions: { show: { watchSource: ['managed'] } },
+				// Changing this on an ALREADY ACTIVE workflow does NOT re-create the
+				// watch and charges nothing: the current watch is already paid for its
+				// own duration. The new value is what the next RENEWAL buys. Re-creating
+				// here would bill a second watch for a dropdown change.
+				description:
+					'How long each paid watch runs. Longer is cheaper per day, and this is also what renewals buy. Changing it on an active workflow costs nothing and does not restart the watch: the new duration applies at the next renewal.',
+				options: [
+					{
+						name: '30 Days, $0.05 per Target',
+						value: 30,
+						description: 'Up to $5.00 for the maximum of 100 targets',
+					},
+					{
+						name: '90 Days, $0.135 per Target (10% Off)',
+						value: 90,
+						description: 'Up to $13.50 for the maximum of 100 targets',
+					},
+					{
+						name: '365 Days, $0.50 per Target (17.8% Off)',
+						value: 365,
+						description:
+							'Up to $50.00 for the maximum of 100 targets. Raise Max Amount Per Call on the credential before activating.',
+					},
+				],
 			},
 			{
 				displayName: 'Delivery',
@@ -228,7 +271,7 @@ export class SirenicTrigger implements INodeType {
 				default: true,
 				displayOptions: { show: { watchSource: ['managed'] } },
 				description:
-					'Whether to renew the watch before its 30 days run out, at the same price per target. Leave it on: an active workflow whose watch has quietly expired looks monitored and is not. Turned off, the node emits a surveillance_expiree item instead of going silent.',
+					'Whether to renew the watch before it runs out, buying whatever Duration is set at that moment. Leave it on: an active workflow whose watch has quietly expired looks monitored and is not. Turned off, the node emits a surveillance_expiree item instead of going silent.',
 			},
 			{
 				displayName: 'Stop the Watch When the Workflow Is Deactivated',
@@ -237,7 +280,7 @@ export class SirenicTrigger implements INodeType {
 				default: false,
 				displayOptions: { show: { watchSource: ['managed'] } },
 				description:
-					'Whether to stop the watch when the workflow is deactivated. Off by default because the watch is prepaid for 30 days: keeping it means re-activating costs nothing. Turn it on to have the targets and their events purged from Sirenic immediately.',
+					'Whether to stop the watch when the workflow is deactivated. Off by default because the watch is prepaid for its whole duration, and stopping refunds nothing: keeping it means re-activating costs nothing. Turn it on to have the targets and their events purged from Sirenic immediately.',
 			},
 			{
 				displayName: 'Verify Signature',
@@ -351,6 +394,7 @@ export class SirenicTrigger implements INodeType {
 				}
 
 				const requete = new URLSearchParams({ cibles: cibles.liste.join(',') });
+				requete.set('duree', String(dureeChoisie.call(this)));
 				if ((this.getNodeParameter('mode', 'webhook') as string) === 'webhook') {
 					const url = this.getNodeWebhookUrl('default');
 					if (!url) {
@@ -519,7 +563,7 @@ export class SirenicTrigger implements INodeType {
 /**
  * Keeps a managed watch alive.
  *
- * Renews it before the 30 days run out — renewal adds 30 days to the current
+ * Renews it before it runs out — renewal adds the chosen duration to the current
  * expiry, so an early renewal loses nothing. When renewal is off, returns a
  * single item saying so: a workflow must never mistake an expired watch for a
  * quiet month.
@@ -549,6 +593,9 @@ async function entretenir(
 		const liste = ciblesDeLetat(watch);
 		if (liste.length > 0) {
 			const requete = new URLSearchParams({ cibles: liste.join(',') });
+			// Duration is re-read on EVERY renewal: changing the dropdown on a live
+			// workflow re-creates nothing, but the next renewal buys the new value.
+			requete.set('duree', String(dureeChoisie.call(this)));
 			const corps = await appelPaye.call(
 				this,
 				`/v1/surveillance/${encodeURIComponent(etat.jeton ?? '')}/renouveler?${requete.toString()}`,
@@ -636,7 +683,7 @@ async function appelPaye(
 			`${quoi} failed: ${error instanceof Error ? error.message : String(error)}`,
 			{
 				description:
-					'Nothing was charged. A watch costs $0.05 per target, so 100 targets quote at $5.00 — raise Max Amount Per Call on the Sirenic credential if the quote was refused.',
+					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00 — raise Max Amount Per Call on the Sirenic credential if the quote was refused, or pick a shorter Duration.',
 			},
 		);
 	}
@@ -691,6 +738,20 @@ async function reglagesPaiement(this: IHookFunctions | IPollFunctions): Promise<
 
 function sourceSurveillance(this: Contexte): string {
 	return this.getNodeParameter('watchSource', 'managed') as string;
+}
+
+/**
+ * The chosen watch duration, in days.
+ *
+ * Defaults to 30 so a workflow saved before this option existed keeps paying
+ * exactly what it paid before. A value the API does not sell would be refused
+ * with 400 duree_invalide and NOTHING would be charged, but the dropdown makes
+ * that unreachable from the UI.
+ */
+function dureeChoisie(this: Contexte): number {
+	const brut = this.getNodeParameter('duree', 30);
+	const jours = Number(brut);
+	return DUREES_VENDUES.includes(jours) ? jours : 30;
 }
 
 /**

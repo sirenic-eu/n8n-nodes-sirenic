@@ -75,7 +75,7 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
 | **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
-| **Sirenic Trigger** | Starts a workflow when a watched company changes — 1 to 100 of them | $0.05 per target |
+| **Sirenic Trigger** | Starts a workflow when a watched company changes — 1 to 100 of them | $0.05 / $0.135 / $0.50 per target (30 / 90 / 365 days) |
 
 Every paid answer carries its source, its freshness date and an Ed25519 signature, so an
 audit trail comes for free.
@@ -108,10 +108,22 @@ signed events, and renews the watch before it runs out.
           or a company is struck off.
 ```
 
-Activating the workflow **pays** for the watch: $0.05 per target for 30 days, so $5.00 for
-the maximum of 100 — raise *Max Amount Per Call* on the credential accordingly. Nothing
-else spends anything: re-activating re-uses the watch it already bought, a test listen
-refuses to create one, and deactivating keeps the days you have paid for.
+Activating the workflow **pays** for the watch, at the per-target price of the chosen
+**Duration**:
+
+| Duration | Per target | 100 targets | vs. paying monthly |
+| --- | --- | --- | --- |
+| 30 days | $0.05 | $5.00 | — |
+| 90 days | $0.135 | $13.50 | −10 % |
+| 365 days | $0.50 | $50.00 | −17.8 % |
+
+Raise *Max Amount Per Call* on the credential accordingly — a yearly watch on 100 targets
+quotes at $50.00, well above the $1.00 default. Nothing else spends anything: re-activating
+re-uses the watch it already bought, a test listen refuses to create one, and deactivating
+keeps the days you have paid for. Payment is final: stopping a watch refunds nothing.
+
+Changing **Duration** on a workflow that is already active charges nothing and does not
+restart the watch — the new duration is what the next **renewal** buys.
 
 Sirenic only calls a **public HTTPS URL on port 443**. A self-hosted n8n the internet
 cannot reach must set **Delivery** to *Polling*: the watch is then created with no webhook

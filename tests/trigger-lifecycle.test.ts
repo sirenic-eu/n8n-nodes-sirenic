@@ -1,6 +1,7 @@
 /**
  * The watch lifecycle moved into the trigger, and it spends real money: $0.05
- * per target for 30 days, up to $5.00. These tests pin the rules that protect
+ * per target for 30 days, $0.135 for 90 and $0.50 for a year — up to $50.00 for
+ * the maximum of 100 targets. These tests pin the rules that protect
  * the wallet, because every one of them is a silent, expensive failure if it
  * ever breaks.
  *
@@ -177,6 +178,35 @@ describe('creating the watch', () => {
 		expect(statique.jeton).toBe('sw_neuve');
 		expect(statique.cibles).toEqual(['entreprise:542065479', 'entreprise:552032534']);
 		expect(statique.expireLe).toBe('2026-09-05T08:00:00.000Z');
+	});
+
+	it('buys 30 days by default — a workflow saved before Duration existed pays the same', async () => {
+		const { urls } = reseauPayant({ surveillance_id: 'sw_defaut' });
+		const { ctx } = contexte();
+
+		await hooks.create.call(ctx);
+		expect(urls[0]).toContain('duree=30');
+	});
+
+	it('buys the chosen Duration, and the yearly one is a real quote of $0.50 per target', async () => {
+		for (const duree of [30, 90, 365]) {
+			const { urls } = reseauPayant({ surveillance_id: 'sw_' + duree });
+			const { ctx } = contexte({ params: { duree } });
+
+			await hooks.create.call(ctx);
+			expect(urls[0], 'duree=' + duree).toContain('duree=' + duree);
+		}
+	});
+
+	it('falls back to 30 days rather than send a duration Sirenic does not sell', async () => {
+		// The dropdown makes this unreachable from the UI, but a workflow JSON can
+		// be edited by hand. Sending 45 would be quoted then refused with 400 — a
+		// failed activation instead of a watch.
+		const { urls } = reseauPayant({ surveillance_id: 'sw_bizarre' });
+		const { ctx } = contexte({ params: { duree: 45 } });
+
+		await hooks.create.call(ctx);
+		expect(urls[0]).toContain('duree=30');
 	});
 
 	it('creates a channel-less watch in polling delivery, so a firewalled n8n still works', async () => {
