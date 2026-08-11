@@ -27,13 +27,16 @@ describe('operation catalogue', () => {
 				expect(findOperation(r.value, op.value), key).toBeDefined();
 			}
 		}
-		// 38 = 40 paid BASE routes (50 in the production price list as of
-		// 2026-07-29, minus the 9 dedicated per-country routes that go through the
-		// generic EU profile, minus /comptes-pdf which production disabled on
-		// 2026-07-29) minus the 2 paid surveillance routes, which moved to the
-		// Sirenic Trigger: a subscription belongs to the node that owns its
-		// lifecycle, not to a catalogue of one-shot lookups.
-		expect(seen.size).toBe(38);
+		// 39 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
+		// autocomplete added in 0.7.0 — it is the only operation of this catalogue
+		// that costs nothing).
+		// The 38 paid ones = 40 paid BASE routes (50 in the production price list
+		// as of 2026-07-29, minus the 9 dedicated per-country routes that go
+		// through the generic EU profile, minus /comptes-pdf which production
+		// disabled on 2026-07-29) minus the 2 paid surveillance routes, which
+		// moved to the Sirenic Trigger: a subscription belongs to the node that
+		// owns its lifecycle, not to a catalogue of one-shot lookups.
+		expect(seen.size).toBe(39);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {

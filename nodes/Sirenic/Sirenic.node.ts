@@ -57,7 +57,10 @@ function resourceFields(resource: (typeof RESOURCES)[number]): INodeProperties[]
  * its resource, so this duplication cannot drift.
  */
 export const DEFAULT_OPERATION: Record<string, string> = {
-	frenchCompany: 'search',
+	// 0.7.0 — the default is now the FREE name autocomplete: a node dropped into
+	// a canvas and run once should not spend the user's money to show what it
+	// does. Existing workflows are unaffected (they store their operation).
+	frenchCompany: 'suggest',
 	dueDiligence: 'getKyb',
 	financials: 'getFinancials',
 	compliance: 'screenSanctions',

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.0 — 2026-08-11
+
+### A free operation, and it is the new default
+
+**French Company → Suggest Names (Free)** turns the start of a company name into
+its SIREN: up to five matches with city, postcode, activity code and
+active/ceased status. It calls `GET /v1/suggestions`, which sits outside
+Sirenic's price list — the node's pre-flight request gets a `200` and no payment
+is ever signed.
+
+- **It is now the default operation of the French Company resource.** Dropping
+  the node on a canvas and running it once should not spend money to show what
+  it does. Existing workflows are untouched: they store their own operation.
+- **Use it upstream of everything else.** Every other operation takes a SIREN;
+  this one produces it for nothing. Chain it into Get Company Profile, Get KYB
+  File or the Sirenic Trigger.
+- **What it deliberately does not do:** no typo tolerance and no confidence
+  score. Those stay in *Search Company* ($0.001), which also reaches names it
+  cannot. Matching is on the START of the registered name, then whole words.
+- **Still needs credentials configured**, like every other operation — the node
+  reads them once per execution. Nothing is charged for this operation, but the
+  node does not yet run credential-free; if that matters for your use case, call
+  the REST endpoint or the MCP tool `suggest_company_names` directly, both of
+  which need no account at all.
+
 ## 0.6.0 — 2026-08-06
 
 ### The watch lifecycle moved into the Sirenic Trigger
