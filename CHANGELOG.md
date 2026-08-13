@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.10.1 — 2026-08-13
+
+Nothing changes for a workflow that already runs. This release exists to clear
+the four points n8n's verification review raised on 0.7.0–0.10.0.
+
+### Published with npm provenance again
+
+0.7.0 through 0.10.0 were published by hand from a laptop, so npm minted no
+provenance attestation for them — and provenance has been mandatory for
+community nodes since 1 May 2026. Nothing was wrong with the workflow in
+`.github/workflows/publish.yml`; it was simply bypassed, since it only runs on a
+`v*` tag and no tag was pushed for those four versions.
+
+So that the shortcut cannot be taken again, `npm publish` now refuses to run
+outside GitHub Actions, and the workflow checks the registry afterwards to
+confirm the attestation really landed rather than trusting the flag.
+
+### English source comments
+
+Two comment blocks added in 0.8.0 were written in French. Translated, along with
+the French comments and test name in `tests/operations.test.ts`, which the review
+did not reach but the rule covers.
+
+### Deactivating a trigger now clears all of its stored state
+
+`create()` initialises the event-deduplication memory in the node's static data,
+and `delete()` left it behind. Every key is now cleared, the cached signing key
+included, so the two hooks are symmetric and a deactivated trigger keeps nothing.
+There was no user-visible effect — the next activation reset that memory anyway.
+A test now activates and deactivates for real and requires the static data to
+come back empty, so a key added later cannot slip through.
+
 ## 0.10.0 — 2026-08-11
 
 ### Search the BODACC gazette by criteria, not by company

@@ -309,6 +309,27 @@ describe('deactivating', () => {
 		expect(String(httpRequest.mock.calls[0]?.[0]?.url)).toContain('/v1/surveillance/sw_vivante/arreter');
 		expect(statique.jeton).toBeUndefined();
 	});
+
+	// n8n's review asked for this: `create` and `delete` must be symmetric, so
+	// nothing survives a deactivation. Written as a real round trip rather than a
+	// list of key names, so a key added to `create` later cannot escape it.
+	it('leaves NOTHING in the static data — the dedup memory and the cached key included', async () => {
+		reseauPayant({ surveillance_id: 'sw_neuve', expire_le: '2026-09-05T08:00:00.000Z' });
+		const { ctx, statique } = contexte({
+			params: { stopOnDeactivate: true },
+			// As a node that has already received a delivery looks: the signing key
+			// is cached in the same static data.
+			statique: { cleSignature: { kid: 'k1', alg: 'ed25519', public_key: 'x' }, cleSignatureLueLe: 1 },
+		});
+
+		await hooks.create.call(ctx);
+		// Proves the assertion below is not passing on an empty object.
+		expect(statique.jeton).toBe('sw_neuve');
+		expect(statique.vus).toEqual([]);
+
+		await expect(hooks.delete.call(ctx)).resolves.toBe(true);
+		expect(Object.keys(statique)).toEqual([]);
+	});
 });
 
 describe('a watch created elsewhere', () => {

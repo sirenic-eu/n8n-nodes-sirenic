@@ -10,28 +10,28 @@ import { DEFAULT_OPERATION, Sirenic } from '../nodes/Sirenic/Sirenic.node';
 import { RESOURCES, findOperation } from '../nodes/Sirenic/operations';
 
 describe('operation catalogue', () => {
-	// ⚠️ LE test qui compte, ajouté en 0.8.0 après un raté réel : en 0.7.0 j'avais
-	// changé DEFAULT_OPERATION en croyant changer le défaut du menu, alors que
-	// RIEN ne lit cette table — le paquet publié ouvrait toujours sur l'opération
-	// PAYANTE, contrairement à son changelog. Ce test lit les littéraux
-	// `default:` des menus déroulants RÉELLEMENT servis à n8n.
-	it("le défaut de CHAQUE menu déroulant est la première opération de sa ressource", () => {
-		const proprietes = new Sirenic().description.properties as Array<{
+	// ⚠️ THE test that matters, added in 0.8.0 after a real miss: in 0.7.0
+	// DEFAULT_OPERATION was changed in the belief that it changed the dropdown
+	// default, when NOTHING reads that table — the published package still opened
+	// on the PAID operation, contrary to its changelog. This test reads the
+	// `default:` literals of the dropdowns ACTUALLY served to n8n.
+	it('every dropdown default is the first operation of its resource', () => {
+		const properties = new Sirenic().description.properties as Array<{
 			name: string;
 			default?: unknown;
 			displayOptions?: { show?: { resource?: string[] } };
 		}>;
-		const menus = proprietes.filter(
+		const dropdowns = properties.filter(
 			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.length === 1,
 		);
-		// Une ressource sans menu passerait inaperçue : on exige la couverture.
-		expect(menus.length).toBe(RESOURCES.length);
-		for (const menu of menus) {
-			const ressource = menu.displayOptions!.show!.resource![0] as string;
-			const premiere = RESOURCES.find((r) => r.value === ressource)?.operations[0]?.value;
-			expect(menu.default, `menu de ${ressource}`).toBe(premiere);
-			// Et la table de documentation doit dire la même chose que le menu.
-			expect(DEFAULT_OPERATION[ressource], `DEFAULT_OPERATION.${ressource}`).toBe(premiere);
+		// A resource without a dropdown would slip through: coverage is required.
+		expect(dropdowns.length).toBe(RESOURCES.length);
+		for (const dropdown of dropdowns) {
+			const resource = dropdown.displayOptions!.show!.resource![0] as string;
+			const first = RESOURCES.find((r) => r.value === resource)?.operations[0]?.value;
+			expect(dropdown.default, `dropdown of ${resource}`).toBe(first);
+			// And the documentation table must say the same thing as the dropdown.
+			expect(DEFAULT_OPERATION[resource], `DEFAULT_OPERATION.${resource}`).toBe(first);
 		}
 	});
 
@@ -54,8 +54,8 @@ describe('operation catalogue', () => {
 		}
 		// 41 = 38 paid operations + 1 FREE (frenchCompany:suggest, the name
 		// autocomplete added in 0.7.0 — the only operation that costs nothing)
-		// + 1 modular (dueDiligence:getFile, the à-la-carte company file of 0.8.0,
-		// whose price depends on the blocks asked for)
+		// + 1 modular (dueDiligence:getFile, the pick-your-blocks company file of
+		// 0.8.0, whose price depends on the blocks asked for)
 		// + 1 criteria search (dueDiligence:searchBodacc, 0.10.0 — the BODACC gazette
 		// searched by family/date/department instead of by company).
 		// The 38 paid ones = 40 paid BASE routes (50 in the production price list

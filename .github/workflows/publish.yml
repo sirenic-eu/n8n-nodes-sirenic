@@ -67,3 +67,22 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify the registry really recorded the provenance attestation
+        # `--provenance` succeeding is not proof the attestation landed: what the
+        # n8n scanner reads is `dist.attestations.provenance` on the registry,
+        # and that is what this asserts. Attestations show up a few seconds after
+        # the publish, hence the retries.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          for attempt in 1 2 3 4 5 6; do
+            type=$(npm view "n8n-nodes-sirenic@${version}" dist.attestations.provenance.predicateType 2>/dev/null || true)
+            if [ "$type" = "https://slsa.dev/provenance/v1" ]; then
+              echo "Provenance attestation confirmed for ${version}"
+              exit 0
+            fi
+            echo "attempt ${attempt}: no attestation yet, waiting"
+            sleep 10
+          done
+          echo "::error::n8n-nodes-sirenic@${version} is published but the registry reports no provenance attestation — n8n verification will reject it."
+          exit 1

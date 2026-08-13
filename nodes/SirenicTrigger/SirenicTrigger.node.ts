@@ -645,13 +645,24 @@ async function arreterSurveillance(this: Contexte, jeton: string): Promise<void>
 	});
 }
 
-/** Clears every trace of a watch this node no longer owns. */
+/**
+ * Clears every trace of a watch this node no longer owns.
+ *
+ * Every key of EtatNode is deleted here, so that `delete()` really empties the
+ * static data `create()` filled — n8n requires that pair to be symmetric. The
+ * event-deduplication memory (`vus`) is part of that: `create()` resets it to
+ * `[]`, so it must be cleared here too. The cached signing key is free to fetch
+ * again, so dropping it costs nothing and leaves nothing behind.
+ */
 function oublierSurveillance(etat: EtatNode): void {
 	delete etat.jeton;
 	delete etat.cibles;
 	delete etat.expireLe;
 	delete etat.expirationSignalee;
 	delete etat.entretenuLe;
+	delete etat.vus;
+	delete etat.cleSignature;
+	delete etat.cleSignatureLueLe;
 }
 
 /* -------------------------------------------------------------------------- */

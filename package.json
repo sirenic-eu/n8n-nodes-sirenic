@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-sirenic",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Verify a supplier before you pay them, in n8n: the French e-invoicing mandate of 1 September 2026 (Belgium since 1 January 2026), legal identity, VAT checked against VIES, IBAN checked against official registries and a deterministic ready-to-invoice verdict — plus KYB due-diligence files, AML sanctions screening, company lookup and company data from the official French company registry (INSEE Sirene, INPI RNE) and European registers. Paid per call over x402, no API key and no account.",
   "keywords": [
     "n8n-community-node-package",
@@ -66,7 +66,8 @@
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "node -e \"if (!process.env.GITHUB_ACTIONS) { console.error('Refusing to publish from here: n8n requires an npm provenance attestation, and only the GitHub Actions workflow can mint one. Push a v* tag instead. Versions 0.7.0 to 0.10.0 shipped without provenance because they were published by hand, and the verification review rejected them for it.'); process.exit(1); }\""
   },
   "files": [
     "dist"

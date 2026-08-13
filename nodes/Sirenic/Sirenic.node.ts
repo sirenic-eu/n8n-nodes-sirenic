@@ -66,8 +66,10 @@ export const DEFAULT_OPERATION: Record<string, string> = {
 	// a canvas and run once should not spend the user's money to show what it
 	// does. Existing workflows are unaffected (they store their operation).
 	frenchCompany: 'suggest',
-	// 0.8.0 : la fiche à la carte passe devant, c'est le « un seul appel »
-	// que cherche un intégrateur n8n (le KYB reste juste en dessous).
+	// 0.10.0 — the BODACC gazette search leads, ahead of the pick-your-blocks
+	// company file that took the lead in 0.8.0: both answer in a single call,
+	// which is what an n8n integrator reaches for, and the full KYB file stays
+	// right below.
 	dueDiligence: 'searchBodacc',
 	financials: 'getFinancials',
 	compliance: 'screenSanctions',
@@ -105,10 +107,10 @@ const PROPERTIES: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		// ⚠️ 0.8.0 — CE littéral est le vrai défaut du menu déroulant. En 0.7.0 je
-		// n'avais changé que `DEFAULT_OPERATION`, que RIEN ne lit : le paquet
-		// publié ouvrait donc toujours sur l'opération PAYANTE, contrairement à ce
-		// que son changelog annonçait. Le test vérifie désormais CES littéraux.
+		// ⚠️ 0.8.0 — THIS literal is the dropdown's real default. In 0.7.0 only
+		// `DEFAULT_OPERATION` was changed, and nothing reads that table: the
+		// published package still opened on the PAID operation, contrary to what
+		// its changelog announced. The test now checks THESE literals.
 		default: 'suggest',
 		displayOptions: { show: { resource: ['frenchCompany'] } },
 		options: operationOptions('frenchCompany'),
