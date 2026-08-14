@@ -233,25 +233,21 @@ Filter the sheet to customers you actually invoice; add Verify VAT Number ($0.00
 
 Chat with the French company registry using an AI Agent and Sirenic MCP
 
-**Description à coller** (262 mots, image comprise)
+**Description à coller** (205 mots)
 
 ~~~markdown
-![Chat with the French company registry using an AI Agent - n8n workflow](https://raw.githubusercontent.com/sirenic-eu/n8n-nodes-sirenic/main/templates/T10-canvas.png)
-
-Ask questions about French and European companies in plain language: a chat agent connected to the Sirenic MCP server picks from 69 tools over official registries. Listing the tools and getting an exact price quote is free, and the whole template runs on n8n Cloud.
-
 ### Who's it for
 Analysts, sales, compliance and founders who want answers about French or European companies in plain language.
 
 ### How it works
-A chat trigger feeds an AI Agent connected to the Sirenic MCP server: 69 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.
+A chat trigger feeds an AI Agent connected to the Sirenic MCP server: 68 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.
 
 ### How to set up
 1. Add credentials for your chat model (OpenAI or any other).
 2. Open the chat and ask a question — the MCP endpoint needs no registration.
 
 ### Requirements
-n8n 1.88+ (MCP Client Tool node) — works on n8n Cloud. A chat-model credential.
+n8n 1.104+ (MCP Client Tool, Streamable HTTP) — works on n8n Cloud. A chat-model credential.
 
 ### How to customize
 Swap the chat model; restrict the tool list in the MCP Client node; to execute paid lookups automatically, use the Sirenic community node (self-hosted), which signs x402 payments for you.
