@@ -1,6 +1,6 @@
 name: Publish n8n node to npm
 
-# The point of this workflow is `--provenance`, and it is not a detail.
+# The point of this workflow is provenance, and it is not a detail.
 #
 # Since 1 May 2026 n8n requires, verbatim: "you must publish ALL community nodes
 # using a GitHub action and include a provenance statement". Both existing x402
@@ -8,6 +8,18 @@ name: Publish n8n node to npm
 # published with npm provenance" — which is why neither is available on n8n
 # Cloud. Publishing with provenance from day one is what makes this package
 # eligible.
+#
+# It is also the ONLY way this package may be published. 0.7.0 to 0.10.0 were
+# published by hand and reached npm with no attestation at all, which the n8n
+# verification review rejected; `prepublishOnly` in package.json now refuses any
+# publish that does not come from GitHub Actions.
+#
+# AUTHENTICATION: npm trusted publishing (OIDC). There is no npm token here and
+# no `NPM_TOKEN` secret to leak or rotate — npm authenticates the run itself
+# from the OIDC token GitHub mints below, and only accepts it for the exact
+# repository and workflow filename registered on npmjs.com. That registration is
+# part of the build: rename this file and publishing stops working until the
+# trusted publisher is updated to match.
 #
 # Trigger: push a tag shaped `v*` (e.g. v0.3.1), or run it by hand.
 
@@ -34,6 +46,24 @@ jobs:
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Install an npm that can do trusted publishing
+        # Node 22 still ships npm 10.x, and OIDC publishing needs 11.5.1 or
+        # later. Without this the publish fails with ENEEDAUTH — which reads
+        # like a missing token and sends you looking in the wrong place, so the
+        # version is asserted here rather than discovered at the publish step.
+        run: |
+          npm install -g npm@latest
+          version=$(npm --version)
+          echo "npm ${version}"
+          node -e '
+            const v = process.argv[1].split(".").map(Number);
+            const ok = v[0] > 11 || (v[0] === 11 && (v[1] > 5 || (v[1] === 5 && v[2] >= 1)));
+            if (!ok) {
+              console.error(`::error::npm ${process.argv[1]} is too old for trusted publishing (need 11.5.1 or later)`);
+              process.exit(1);
+            }
+          ' "$version"
 
       - run: npm install --no-audit --no-fund
 
@@ -64,9 +94,13 @@ jobs:
           fi
 
       - name: Publish
+        # No `env:` block, and that is the point: npm authenticates this run
+        # through the OIDC token, against the trusted publisher registered for
+        # this package on npmjs.com. A stray NODE_AUTH_TOKEN here would silently
+        # win over OIDC and we would believe we had moved off tokens when we had
+        # not. `--provenance` is redundant under trusted publishing (npm attests
+        # automatically) but harmless, and it keeps the intent readable.
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify the registry really recorded the provenance attestation
         # `--provenance` succeeding is not proof the attestation landed: what the
