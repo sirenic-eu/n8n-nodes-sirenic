@@ -50,9 +50,10 @@ const TEMPLATES = [
 	{
 		id: 'T10',
 		fichier: 'T10-chat-french-registry-mcp.json',
-		alt: 'Chat with the French company registry using an AI Agent - n8n workflow',
-		intro:
-			'Ask questions about French and European companies in plain language: a chat agent connected to the Sirenic MCP server picks from 69 tools over official registries. Listing the tools and getting an exact price quote is free, and the whole template runs on n8n Cloud.',
+		// No image: T10 uses core nodes only, so n8n.io renders its canvas preview by itself
+		// (the image exists for the 5 others because n8n.io serves no icon for a community node).
+		// No intro either: T10 carries it inside its sticky, the only text n8n publishes unrewritten.
+		image: false,
 	},
 ];
 
@@ -120,7 +121,13 @@ depuis la racine du dépôt.
 
 for (const t of TEMPLATES) {
 	const d = description(t.fichier);
-	const corps = `![${t.alt}](${BRUT}/${t.id}-canvas.png)\n\n${t.intro}\n\n${d.corps}`;
+	const corps = [
+		t.image === false ? null : `![${t.alt}](${BRUT}/${t.id}-canvas.png)`,
+		t.intro ?? null,
+		d.corps,
+	]
+		.filter(Boolean)
+		.join('\n\n');
 	out += `---
 
 ## ${t.id} — \`${t.fichier}\`
@@ -129,7 +136,7 @@ for (const t of TEMPLATES) {
 
 ${d.nom}
 
-**Description à coller** (${mots(corps)} mots, image comprise)
+**Description à coller** (${mots(corps)} mots${t.image === false ? '' : ', image comprise'})
 
 ~~~markdown
 ${corps}

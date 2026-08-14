@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Chat with the French company registry\n\n### Who's it for\nAnalysts, sales, compliance and founders who want answers about French or European companies in plain language.\n\n### How it works\nA chat trigger feeds an AI Agent connected to the Sirenic MCP server: 69 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.\n\n### How to set up\n1. Add credentials for your chat model (OpenAI or any other).\n2. Open the chat and ask a question — the MCP endpoint needs no registration.\n\n### Requirements\nn8n 1.88+ (MCP Client Tool node) — works on n8n Cloud. A chat-model credential.\n\n### How to customize\nSwap the chat model; restrict the tool list in the MCP Client node; to execute paid lookups automatically, use the Sirenic community node (self-hosted), which signs x402 payments for you.",
+        "content": "## Chat with the French company registry\n\n### Who's it for\nAnalysts, sales, compliance and founders who want answers about French or European companies in plain language.\n\n### How it works\nA chat trigger feeds an AI Agent connected to the Sirenic MCP server: 68 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.\n\n### How to set up\n1. Add credentials for your chat model (OpenAI or any other).\n2. Open the chat and ask a question — the MCP endpoint needs no registration.\n\n### Requirements\nn8n 1.104+ (MCP Client Tool, Streamable HTTP) — works on n8n Cloud. A chat-model credential.\n\n### How to customize\nSwap the chat model; restrict the tool list in the MCP Client node; to execute paid lookups automatically, use the Sirenic community node (self-hosted), which signs x402 payments for you.",
         "height": 866,
         "width": 560
       },
@@ -28,7 +28,7 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        460,
+        600,
         400
       ]
     },
@@ -75,9 +75,23 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        20,
+        -80,
         460
       ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "fromInput",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        130,
+        460
+      ],
+      "id": "mem-t10-0001-0001-000000000001",
+      "name": "Conversation memory"
     },
     {
       "parameters": {
@@ -88,11 +102,11 @@
         "options": {}
       },
       "id": "mcp-t10",
-      "name": "Sirenic MCP (69 tools)",
+      "name": "Sirenic MCP (68 tools)",
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "typeVersion": 1.1,
       "position": [
-        240,
+        340,
         460
       ]
     }
@@ -120,12 +134,23 @@
         ]
       ]
     },
-    "Sirenic MCP (69 tools)": {
+    "Sirenic MCP (68 tools)": {
       "ai_tool": [
         [
           {
             "node": "French registry agent",
             "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "French registry agent",
+            "type": "ai_memory",
             "index": 0
           }
         ]

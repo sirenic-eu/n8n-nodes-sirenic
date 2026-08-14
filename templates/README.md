@@ -6,7 +6,7 @@ Import them via **Workflows → Import from file** in n8n. Errors are never bill
 
 | File | What it does | Cost per run |
 |---|---|---|
-| [T10-chat-french-registry-mcp.json](T10-chat-french-registry-mcp.json) | Chat with the French company registry through an AI Agent connected to the Sirenic MCP server (69 tools). Native n8n nodes only — **works on n8n Cloud**, no account, no API key. | free discovery; data calls from $0.001 |
+| [T10-chat-french-registry-mcp.json](T10-chat-french-registry-mcp.json) | Chat with the French company registry through an AI Agent connected to the Sirenic MCP server (68 tools). Native n8n nodes only — **works on n8n Cloud**, no account, no API key. | free discovery; data calls from $0.001 |
 | [T01-verify-french-suppliers.json](T01-verify-french-suppliers.json) | Verify a French supplier before paying an invoice: identity, VAT live against VIES, IBAN + bank identification, deterministic ready-to-invoice verdict. Blocked suppliers alert Slack with closed-list reasons. | $0.03 per supplier |
 | [T02-enrich-hubspot-companies.json](T02-enrich-hubspot-companies.json) | Enrich every new HubSpot company with official registry data (SIREN, legal form, NAF, workforce, status), with a confidence-score guard and human review on homonyms. | $0.006 per company |
 | [T03-kyb-client-onboarding.json](T03-kyb-client-onboarding.json) | Run a full KYB check when a client signs up: identity, officers, insolvency, financials and sanctions in one call, then route to auto-approve, human review or hard stop. | $0.15 per applicant |
@@ -41,7 +41,7 @@ Import them via **Workflows → Import from file** in n8n. Errors are never bill
 
 ## Requirements
 
-- **T10**: any n8n ≥ 1.88 (MCP Client Tool node) + chat-model credentials. Nothing else —
+- **T10**: any n8n ≥ 1.104 (MCP Client Tool, Streamable HTTP) + chat-model credentials. Nothing else —
   it runs on n8n Cloud.
 - **T01, T02, T03, T07, T08**: this community node installed (`n8n-nodes-sirenic`,
   self-hosted) + Sirenic credentials, plus the app credentials each one uses
