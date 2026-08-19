@@ -235,7 +235,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Suggest Names (Free)',
 				action: 'Suggest company names for free',
 				description:
-					'FREE, no payment at all: type the start of a French company name and get up to five matches with SIREN, city, postcode, activity code and active/ceased status. Use it to turn a name into the SIREN every other operation needs. Matches the start of the registered name, then whole words; no typo tolerance and no confidence score — for those use Search ($0.001). (Free).',
+					'FREE, no payment at all: type the start of a French company name and get up to five matches with SIREN, city, postcode, activity code and active/ceased status. Use it to turn a name into the SIREN every other operation needs. Matches the start of the registered name, then whole words; no typo tolerance and no confidence score — for those use Search ($0.002). (Free).',
 				path: (p) => `/v1/suggestions?q=${enc(p('query'))}`,
 				fields: [
 					{
@@ -254,7 +254,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Search',
 				action: 'Search companies by name',
 				description:
-					'French company search when you do not have the SIREN: company lookup by name in the official French company registry (INSEE Sirene). Returns the top matches with a 0-1 confidence score. Tolerates typos, unlike the free Suggest Names operation. ($0.001).',
+					'French company search when you do not have the SIREN: company lookup by name in the official French company registry (INSEE Sirene). Returns the top matches with a 0-1 confidence score. Tolerates typos, unlike the free Suggest Names operation. ($0.002).',
 				path: (p) => `/v1/recherche?q=${enc(p('query'))}`,
 				fields: [
 					{

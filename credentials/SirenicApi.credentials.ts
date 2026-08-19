@@ -63,7 +63,7 @@ export class SirenicApi implements ICredentialType {
 			required: true,
 			typeOptions: { minValue: 0.000001, numberPrecision: 6 },
 			description:
-				'Hard ceiling for a single request. The node refuses to sign a quote above this amount, whatever the API asks for. Most Sirenic routes cost $0.001 to $1.00 per call, but batched and monitoring routes are priced per entity: a 100-target watch quotes at $5.00 for 30 days and $50.00 for a year. Raise this before activating one.',
+				'Hard ceiling for a single request. The node refuses to sign a quote above this amount, whatever the API asks for. Most Sirenic routes cost $0.002 to $1.00 per call, but batched and monitoring routes are priced per entity: a 100-target watch quotes at $5.00 for 30 days and $50.00 for a year. Raise this before activating one.',
 		},
 		{
 			displayName: 'Max Amount Per Execution (USD)',

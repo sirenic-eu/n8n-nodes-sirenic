@@ -9,7 +9,7 @@ registers.
 
 Sirenic is paid per call over [x402](https://x402.org): each request settles a small USDC
 payment on Base. You bring a wallet, you set a spending cap, you are done. Prices run from
-**$0.001** to **$2.00** per call, and you only pay for calls that succeed.
+**$0.002** to **$2.00** per call, and you only pay for calls that succeed.
 
 ## The node in use
 
@@ -69,7 +69,7 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | Operation | What it answers | Price |
 |---|---|---:|
 | **Suggest Names** | "I have a name, what is its SIREN?" — up to 5 matches with city and activity code | **free** |
-| **Search Company** | "Which company is this, exactly?" — by name, with a confidence score, and it forgives typos | $0.001 |
+| **Search Company** | "Which company is this, exactly?" — by name, with a confidence score, and it forgives typos | $0.002 |
 | **Get Company Profile** | Legal name, form, head office, activity, workforce, officers, VAT number | $0.005 |
 | **Get Company File** | Several things about one company without chaining calls — you pick the blocks | $0.005 + per block, max $0.35 |
 | **Search BODACC Announcements** | The other direction: *which* companies entered insolvency in this department this week | $0.03 |
