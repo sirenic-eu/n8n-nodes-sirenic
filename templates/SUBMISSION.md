@@ -102,7 +102,7 @@ New HubSpot companies are filled in from the official French registry - SIREN, l
 Sales ops teams whose reps only type a company name — and whose CRM fills up with duplicates, dead companies and empty fields.
 
 ### How it works
-When a company is created in HubSpot, Sirenic searches the official French registry (INSEE Sirene) by name ($0.001) and returns candidates with a 0-1 confidence score. On a confident match, the full official profile ($0.005) — SIREN, legal form, NAF activity code, workforce bracket, administrative status — is written back to HubSpot, with the SIREN stored as a reliable dedup key. On homonyms, a Slack message asks for a 10-second human review instead of guessing. Total: $0.006 per enriched company; failed requests are never billed.
+When a company is created in HubSpot, Sirenic searches the official French registry (INSEE Sirene) by name ($0.002) and returns candidates with a 0-1 confidence score. On a confident match, the full official profile ($0.005) — SIREN, legal form, NAF activity code, workforce bracket, administrative status — is written back to HubSpot, with the SIREN stored as a reliable dedup key. On homonyms, a Slack message asks for a 10-second human review instead of guessing. Total: $0.007 per enriched company; failed requests are never billed.
 
 ### How to set up
 1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.
@@ -240,7 +240,7 @@ Chat with the French company registry using an AI Agent and Sirenic MCP
 Analysts, sales, compliance and founders who want answers about French or European companies in plain language.
 
 ### How it works
-A chat trigger feeds an AI Agent connected to the Sirenic MCP server: 68 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.001 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.
+A chat trigger feeds an AI Agent connected to the Sirenic MCP server: 68 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.002 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.
 
 ### How to set up
 1. Add credentials for your chat model (OpenAI or any other).
