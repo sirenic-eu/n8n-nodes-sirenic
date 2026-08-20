@@ -280,7 +280,7 @@ export class SirenicTrigger implements INodeType {
 				default: false,
 				displayOptions: { show: { watchSource: ['managed'] } },
 				description:
-					'Whether to stop the watch when the workflow is deactivated. Off by default because the watch is prepaid for its whole duration, and stopping refunds nothing: keeping it means re-activating costs nothing. Turn it on to have the targets and their events purged from Sirenic immediately.',
+					'Whether to stop the watch when the workflow is deactivated. Off by default because the watch is prepaid for its whole duration and stopping refunds nothing: left off, the watch keeps running on Sirenic until its expiry (still queryable with its token). Either way, re-activating the workflow starts a NEW paid watch. Turn this on to have the targets and their events purged from Sirenic immediately.',
 			},
 			{
 				displayName: 'Verify Signature',
@@ -430,28 +430,34 @@ export class SirenicTrigger implements INodeType {
 			},
 
 			/**
-			 * Deactivation. Stopping is free but forfeits the rest of the 30 prepaid
-			 * days, so it only happens when the user asked for it.
+			 * Deactivation. Static data is cleared on EVERY exit path — the n8n
+			 * contract is that delete() removes every key create() stored
+			 * (review of 20 Aug 2026). Stopping the watch on Sirenic, which
+			 * forfeits the rest of the prepaid days, remains opt-in
+			 * (stopOnDeactivate): with it off, the watch lives on server-side
+			 * until expiry; a re-activation goes through checkExists, finds no
+			 * token, and creates a new watch — the prepaid remainder of the old
+			 * one is forfeited, which the stopOnDeactivate description says.
 			 */
 			async delete(this: IHookFunctions): Promise<boolean> {
 				if (sourceSurveillance.call(this) !== 'managed') return true;
 
 				const etat = this.getWorkflowStaticData('node') as EtatNode;
 				if (!etat.jeton) return true;
-				if (!(this.getNodeParameter('stopOnDeactivate', false) as boolean)) return true;
-
-				try {
-					await arreterSurveillance.call(this, etat.jeton);
-				} catch (error) {
-					if (statutDe(error) !== 404) {
-						throw new NodeApiError(this.getNode(), error as JsonObject, {
-							message: 'Could not stop the watch on Sirenic',
-							description:
-								'The workflow is deactivated all the same. The watch stops on its own at expiry, or you can stop it by calling GET /v1/surveillance/{token}/arreter.',
-						});
+				if (this.getNodeParameter('stopOnDeactivate', false) as boolean) {
+					try {
+						await arreterSurveillance.call(this, etat.jeton);
+					} catch (error) {
+						if (statutDe(error) !== 404) {
+							throw new NodeApiError(this.getNode(), error as JsonObject, {
+								message: 'Could not stop the watch on Sirenic',
+								description:
+									'The workflow is deactivated all the same. The watch stops on its own at expiry, or you can stop it by calling GET /v1/surveillance/{token}/arreter.',
+							});
+						}
 					}
 				}
-				oublierSurveillance(etat);
+				oublierSurveillance(etat); // always clear static data
 				return true;
 			},
 		},
