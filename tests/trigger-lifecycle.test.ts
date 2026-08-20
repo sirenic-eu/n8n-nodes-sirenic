@@ -289,14 +289,20 @@ describe('re-activating', () => {
 });
 
 describe('deactivating', () => {
-	it('keeps the watch by default — it is prepaid for 30 days', async () => {
+	it('by default, never calls the paid stop — the watch lives on server-side — but clears ALL static data (n8n contract)', async () => {
+		// The previous version of this test asserted that the token SURVIVED
+		// deactivation: it was locking in exactly the behaviour the n8n manual
+		// review rejected on 20 Aug 2026 (delete() must clear every key
+		// create() stored, on every exit path). A green test can guard a
+		// defect: after the fix, THIS assertion flipping is the point.
 		const { ctx, statique, httpRequest } = contexte({
 			statique: { jeton: 'sw_vivante', cibles: ['entreprise:552032534'] },
 		});
 
 		await expect(hooks.delete.call(ctx)).resolves.toBe(true);
-		expect(httpRequest).not.toHaveBeenCalled();
-		expect(statique.jeton).toBe('sw_vivante');
+		expect(httpRequest).not.toHaveBeenCalled(); // no paid stop: the watch runs to expiry on Sirenic
+		expect(statique.jeton).toBeUndefined();
+		expect(Object.keys(statique)).toEqual([]);
 	});
 
 	it('stops and forgets it when the user asked for that', async () => {
