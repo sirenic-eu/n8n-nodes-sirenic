@@ -26,7 +26,15 @@ Not sure what a call will cost? Switch on the **Dry Run** option: the node fetch
 the quote, reports `would_pay_usd`, and settles nothing. It states the price before
 it spends.
 
-Full video: [demo-sirenic-node.mp4](https://github.com/sirenic-eu/n8n-nodes-sirenic/blob/main/media/demo-sirenic-node.mp4?raw=1).
+**Full demo — 1 min 15, no sound, captions on screen:**
+[demo-sirenic-node-full.mp4](https://github.com/sirenic-eu/n8n-nodes-sirenic/blob/main/media/demo-sirenic-node-full.mp4?raw=1)
+walks through the whole thing on a self-hosted n8n 2.32.7: installing the package
+from the npm registry, the credential (a Base wallet with hard spending caps, no API
+key), the free *Suggest Names* operation answering live from the French registry,
+a price read with **Dry Run** before any spend, and the *Sirenic Trigger* panel.
+
+The older sixteen-second clip is still there:
+[demo-sirenic-node.mp4](https://github.com/sirenic-eu/n8n-nodes-sirenic/blob/main/media/demo-sirenic-node.mp4?raw=1).
 
 ## Use case #1 — Verify a supplier before payment
 
