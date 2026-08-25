@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.4 — 2026-08-25
+
+Documentation only: no code, no behaviour and no dependency changed.
+
+### The demo video the verification review asked for
+
+n8n's manual review of 0.10.3 raised a single point — a video demonstrating the
+node — and the creator portal offers no field to upload one, so the package
+carries it: `media/demo-sirenic-node-full.mp4`, linked from the README.
+
+One minute fifteen, no sound, captions on screen, recorded on a self-hosted n8n
+2.32.7: installing the package from the npm registry, the credential (a Base
+wallet with per-call and per-execution ceilings, no API key and no account), the
+free *Suggest Names* operation answering live from INSEE Sirene, a price read
+with **Dry Run** before any spend (`would_pay_usd` 0.03), and the *Sirenic
+Trigger* parameters.
+
 ## 0.10.1 — 2026-08-13
 
 Nothing changes for a workflow that already runs. This release exists to clear
