@@ -64,6 +64,15 @@ const SIREN: Field = {
 	description: 'Nine-digit French company identifier.',
 };
 
+const RNA: Field = {
+	name: 'rna',
+	label: 'RNA Number',
+	type: 'string',
+	required: true,
+	placeholder: 'W751004076',
+	description:
+		'French association identifier: W followed by nine characters. Use Search Associations when you only have a name.',
+};
 const COUNTRY: Field = {
 	name: 'country',
 	label: 'Country',
@@ -680,6 +689,84 @@ export const RESOURCES: Resource[] = [
 					'Registration with the official register of interest representatives: status, expense brackets, subjects, clients. Organisation-level only, no personal data. ($0.01).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/lobbying`,
 				fields: [SIREN],
+			},
+		],
+	},
+
+	{
+		value: 'association',
+		name: 'Associations (Nonprofits)',
+		operations: [
+			{
+				value: 'searchAssociations',
+				name: 'Search Associations',
+				action: 'Search French associations by name',
+				description:
+					'Start here when you only have a name. Trigram search over the French national register of associations (RNA), with optional postal-code, department and position filters. Returns up to 20 matches with a confidence score and the RNA number to feed the two operations below. Covers associations that have no SIREN at all. ($0.002).',
+				path: (p) => {
+					const q = new URLSearchParams({ q: p('associationQuery') });
+					for (const [nom, champ] of [['code_postal', 'associationPostalCode'], ['departement', 'associationDepartment'], ['position', 'associationPosition']] as const) {
+						const valeur = p(champ);
+						if (valeur) q.set(nom, valeur);
+					}
+					return `/v1/associations/recherche?${q.toString()}`;
+				},
+				fields: [
+					{
+						name: 'associationQuery',
+						label: 'Name',
+						type: 'string',
+						required: true,
+						placeholder: 'croix rouge',
+						description:
+							'Association title, or an RNA number (resolved directly). Unsupported characters are stripped, not rejected.',
+					},
+					{
+						name: 'associationPostalCode',
+						label: 'Postal Code',
+						type: 'string',
+						placeholder: '75014',
+						description: 'Optional postal code or prefix (two to five digits) of the registered office.',
+					},
+					{
+						name: 'associationDepartment',
+						label: 'Department',
+						type: 'string',
+						placeholder: '75',
+						description: 'Optional department: 01 to 95, 2A, 2B, or 971 to 989. Ignored when a postal code is given.',
+					},
+					{
+						name: 'associationPosition',
+						label: 'Position',
+						type: 'options',
+						default: '',
+						description: 'Optional filter on the association position.',
+						options: [
+							{ name: 'Any', value: '' },
+							{ name: 'Active', value: 'active' },
+							{ name: 'Dissolved', value: 'dissoute' },
+							{ name: 'Deleted', value: 'supprimee' },
+						],
+					},
+				],
+			},
+			{
+				value: 'getAssociationProfile',
+				name: 'Get Association Profile',
+				action: 'Get an association profile by RNA number',
+				description:
+					'Official profile of a French association (loi 1901) from the national register: title, purpose, position, creation and declaration dates, registered office, website, RUP number as declared, and the SIREN when the business register confirms it. No officer or declarant data; Alsace-Moselle is out of the register by law. ($0.005).',
+				path: (p) => `/v1/association/${enc(p('rna'))}`,
+				fields: [RNA],
+			},
+			{
+				value: 'getAssociationNotices',
+				name: 'Get Association Official-Journal Notices',
+				action: 'Get the official-journal notices of an association',
+				description:
+					'Creations, changes of title, purpose or registered office, and dissolutions published in the official journal of associations (JOAFE) — the association equivalent of the commercial gazette. Carries the loaded coverage window: no notice inside it is a fact, not a gap. ($0.01).',
+				path: (p) => `/v1/association/${enc(p('rna'))}/annonces`,
+				fields: [RNA],
 			},
 		],
 	},

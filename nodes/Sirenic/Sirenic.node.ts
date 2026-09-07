@@ -77,6 +77,10 @@ export const DEFAULT_OPERATION: Record<string, string> = {
 	europeanCompany: 'search',
 	invoicing: 'getFrenchPack',
 	people: 'searchDirectors',
+	// 0.11.0 — associations (loi 1901): the FREE-form name search leads, like on
+	// the company resource. An integrator who has an RNA number goes straight to
+	// the profile; one who has a name needs the search first.
+	association: 'searchAssociations',
 };
 
 /** Operation options of a resource, derived from the catalogue. */
@@ -177,6 +181,15 @@ const PROPERTIES: INodeProperties[] = [
 		default: 'searchDirectors',
 		displayOptions: { show: { resource: ['people'] } },
 		options: operationOptions('people'),
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		default: 'searchAssociations',
+		displayOptions: { show: { resource: ['association'] } },
+		options: operationOptions('association'),
 	},
 	...RESOURCES.flatMap(resourceFields),
 	{

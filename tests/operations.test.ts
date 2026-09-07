@@ -64,7 +64,8 @@ describe('operation catalogue', () => {
 		// disabled on 2026-07-29) minus the 2 paid surveillance routes, which
 		// moved to the Sirenic Trigger: a subscription belongs to the node that
 		// owns its lifecycle, not to a catalogue of one-shot lookups.
-		expect(seen.size).toBe(41);
+		// 41 → 44 en 0.11.0 : la ressource Associations (recherche RNA, fiche, annonces JOAFE).
+		expect(seen.size).toBe(44);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {

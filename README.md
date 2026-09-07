@@ -84,6 +84,9 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
 | **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
+| **Search Associations** | "I have the name of an association" — the national register of associations (RNA), where **one association in two has no SIREN** | $0.002 |
+| **Get Association Profile** | Title, purpose, position, dates, registered office, RUP number — by RNA number | $0.005 |
+| **Get Association Official-Journal Notices** | Creations, modifications and dissolutions published in the JOAFE — the gazette of the nonprofit world | $0.01 |
 | **Sirenic Trigger** | Starts a workflow when a watched company changes — 1 to 100 of them | $0.05 / $0.135 / $0.50 per target (30 / 90 / 365 days) |
 
 Every paid answer carries its source, its freshness date and an Ed25519 signature, so an

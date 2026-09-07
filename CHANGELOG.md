@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.11.0 — 2026-09-07
+
+### Associations (nonprofits): a resource of their own
+
+France counts about 1.5 million associations under the loi 1901, and **one in two
+has no SIREN at all** — no company register knows them. Their legal identifier is
+the RNA number, and three operations now cover them, in a new **Associations
+(Nonprofits)** resource:
+
+| Operation | What it answers | Price |
+| --- | --- | --- |
+| **Search Associations** | "I have a name" — trigram search over the national register, optional postal code, department and position filters, up to 20 matches with a confidence score | $0.002 |
+| **Get Association Profile** | Title, purpose, position (active, dissolved, deleted), creation and declaration dates, registered office, website, RUP number as declared, and the SIREN when the business register confirms it | $0.005 |
+| **Get Association Official-Journal Notices** | Creations, changes of title, purpose or registered office, dissolutions — the association equivalent of the commercial gazette, with the loaded coverage window | $0.01 |
+
+Sources: the national register of associations (Ministry of the Interior, monthly
+export) and the official journal of associations (JOAFE, weekly issue). No officer
+and no declarant data is served — those columns are never even stored. Associations
+under Alsace-Moselle local law are outside the national register, by law, and the
+response says so.
+
+The default operation of the new resource is the search: an integrator who has a
+name needs it first, and one who already has an RNA number goes straight to the
+profile.
+
 ## 0.10.4 — 2026-08-25
 
 Documentation only: no code, no behaviour and no dependency changed.
