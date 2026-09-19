@@ -47,6 +47,10 @@ interface Options {
 /** A hook context with everything the node reads, and nothing it does not. */
 function contexte(o: Options = {}) {
 	const params: Record<string, unknown> = {
+		// Ces tests couvrent le rail WALLET : depuis la 0.13.0 le node offre deux
+		// rails et le défaut est la clé d'API, donc le rail se dit ici plutôt que
+		// de se déduire d'un silence.
+		authentication: 'x402',
 		watchSource: 'managed',
 		targets: CIBLES,
 		mode: 'webhook',

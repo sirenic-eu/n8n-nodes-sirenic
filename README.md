@@ -152,9 +152,32 @@ issues one edition a day. Nobody can honestly offer real time on registry data.
 ## Setup
 
 1. Install the node: **Settings → Community Nodes → Install** → `n8n-nodes-sirenic`
-2. Create a **Sirenic API** credential.
+2. Pick a rail on the node's **Authentication** field, and create the matching credential.
+
+### Two ways to pay — pick one
+
+Same routes, same prices, same responses. Only the payment header differs.
+
+| | **API Key** (default) | **Wallet** (x402) |
+| --- | --- | --- |
+| What you hold | A key from [api.sirenic.eu/compte](https://api.sirenic.eu/compte), created with an e-mail and a magic link | A Base private key funded with USDC |
+| How you pay | Prepaid credits, in euros | A USDC payment signed per call |
+| Account | Yes | None at all |
+| Free tier | 150 calls a month on routes at $0.05 or less | — |
+| Ceiling | Counts what the API reports it charged, stops before crossing | Refuses a quote above the cap, before signing |
+
+**Which one?** If you are a finance, CRM or procurement team, take the API key:
+there is nothing to fund and nothing to sign. The wallet exists for agents and for
+anyone who would rather not open an account at all — it is the only rail that needs
+no e-mail address.
+
+The same twelve workflows are also published ready to import, built on plain HTTP
+Request nodes so they run on n8n Cloud without this package:
+<https://api.sirenic.eu/workflows>.
 
 ### Funding a wallet
+
+*Only for the wallet rail. Skip this if you took the API key.*
 
 You need a Base (mainnet) wallet holding USDC.
 

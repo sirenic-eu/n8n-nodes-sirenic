@@ -9,7 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { SirenicPayer, type PaymentSettings } from './x402';
+import { SirenicPayer, type AppelantSirenic, type PaymentSettings } from './x402';
+import { SirenicKeyCaller } from './cle-api';
 import { RESOURCES, findOperation, type Field } from './operations';
 
 /**
@@ -95,6 +96,40 @@ function operationOptions(resource: string) {
 }
 
 const PROPERTIES: INodeProperties[] = [
+	{
+		/**
+		 * Le choix du rail, en 0.13.0.
+		 *
+		 * `apiKey` est le DÉFAUT : le rail wallet demandait à une équipe finance
+		 * ou CRM de détenir une clé privée Base approvisionnée en USDC avant de
+		 * pouvoir consulter un SIREN. Changer un défaut casserait les workflows
+		 * enregistrés qui n'ont pas ce paramètre — mesuré le 17/08/2026, les
+		 * téléchargements npm sont des bots à 97 % et l'adoption humaine réelle
+		 * tient entre zéro et deux installations, donc le risque est nul et il
+		 * est écrit ici plutôt que caché. Un workflow qui tenait au wallet
+		 * repasse le sélecteur sur « x402 » : rien d'autre ne change.
+		 */
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		noDataExpression: true,
+		default: 'apiKey',
+		options: [
+			{
+				name: 'API Key (Prepaid Credits)',
+				value: 'apiKey',
+				description: 'A key created at api.sirenic.eu/compte, charged against prepaid credits. No wallet, no crypto.',
+			},
+			{
+				name: 'Wallet — USDC on Base',
+				value: 'x402',
+				// « x402 » s'écrit en minuscules : c'est un nom de protocole. La
+				// règle de casse des libellés le transformait en « X402 », d'où
+				// le libellé sans le mot et la mention dans la description.
+				description: 'A Base private key that signs a USDC payment per call over x402. No account needed.',
+			},
+		],
+	},
 	{
 		displayName: 'Resource',
 		name: 'resource',
@@ -218,6 +253,54 @@ const PROPERTIES: INodeProperties[] = [
 	},
 ];
 
+/**
+ * L'appelant du rail CLÉ D'API. Rien n'est signé : la clé part en en-tête et le
+ * compte est débité en euros.
+ */
+async function appelantParCle(this: IExecuteFunctions): Promise<AppelantSirenic> {
+	const credentials = await this.getCredentials('sirenicApiKeyApi');
+	const apiKey = String(credentials.apiKey ?? '');
+	if (!apiKey.startsWith('srn_')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'The Sirenic API key must start with "srn_". Create one at https://api.sirenic.eu/compte.',
+		);
+	}
+	return new SirenicKeyCaller({
+		apiKey,
+		baseUrl: String(credentials.baseUrl ?? 'https://api.sirenic.eu'),
+		maxSpendPerExecution: Number(credentials.maxSpendPerExecution ?? 0),
+	});
+}
+
+/**
+ * L'appelant du rail WALLET. Les plafonds y sont obligatoires : un node capable
+ * de signer un paiement sans plafond est un passif.
+ */
+async function appelantParWallet(this: IExecuteFunctions): Promise<AppelantSirenic> {
+	const credentials = await this.getCredentials('sirenicApi');
+	const settings: PaymentSettings = {
+		privateKey: String(credentials.privateKey ?? ''),
+		baseUrl: String(credentials.baseUrl ?? 'https://api.sirenic.eu'),
+		payTo: String(credentials.payTo ?? ''),
+		maxPerCall: Number(credentials.maxAmountPerCall ?? 0),
+		maxPerExecution: Number(credentials.maxAmountPerExecution ?? 0),
+	};
+	if (!settings.privateKey.startsWith('0x') || settings.privateKey.length !== 66) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'The wallet private key must be a 0x-prefixed 32-byte hex string.',
+		);
+	}
+	if (!(settings.maxPerCall > 0) || !(settings.maxPerExecution > 0)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Both spending caps must be greater than zero. They are what keeps a runaway workflow from draining the wallet.',
+		);
+	}
+	return new SirenicPayer(settings);
+}
+
 export class Sirenic implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sirenic',
@@ -233,7 +316,18 @@ export class Sirenic implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [{ name: 'sirenicApi', required: true }],
+		credentials: [
+			{
+				name: 'sirenicApiKeyApi',
+				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'sirenicApi',
+				required: true,
+				displayOptions: { show: { authentication: ['x402'] } },
+			},
+		],
 		// Discovery metadata. The `alias` entries feed the search box of the
 		// nodes panel — where users actually look, long before npm. Someone
 		// typing "KYB", "SIREN" or "due diligence" has to find us, given that
@@ -260,30 +354,13 @@ export class Sirenic implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const credentials = await this.getCredentials('sirenicApi');
+		// Le rail se lit sur l'item 0 : un sélecteur d'authentification ne
+		// s'exprime pas par item, et un appelant par exécution est ce qui rend le
+		// plafond de dépense opposable à TOUS les items.
+		const rail = this.getNodeParameter('authentication', 0, 'apiKey') as 'apiKey' | 'x402';
 
-		const settings: PaymentSettings = {
-			privateKey: String(credentials.privateKey ?? ''),
-			baseUrl: String(credentials.baseUrl ?? 'https://api.sirenic.eu'),
-			payTo: String(credentials.payTo ?? ''),
-			maxPerCall: Number(credentials.maxAmountPerCall ?? 0),
-			maxPerExecution: Number(credentials.maxAmountPerExecution ?? 0),
-		};
-		if (!settings.privateKey.startsWith('0x') || settings.privateKey.length !== 66) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'The wallet private key must be a 0x-prefixed 32-byte hex string.',
-			);
-		}
-		if (!(settings.maxPerCall > 0) || !(settings.maxPerExecution > 0)) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Both spending caps must be greater than zero. They are what keeps a runaway workflow from draining the wallet.',
-			);
-		}
-
-		// One payer per execution: the per-execution cap spans every item.
-		const payer = new SirenicPayer(settings);
+		const payer: AppelantSirenic =
+			rail === 'apiKey' ? await appelantParCle.call(this) : await appelantParWallet.call(this);
 		const output: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {

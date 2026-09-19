@@ -44,6 +44,20 @@ const DECIMALS = 1_000_000;
  */
 const MARGE_REGLEMENT_MS = 30_000;
 
+/**
+ * Ce que le node et le trigger attendent d'un appelant, quel que soit le rail.
+ *
+ * Deux implémentations : `SirenicPayer` signe un paiement x402 par appel, et
+ * `SirenicKeyCaller` pose une clé d'API et compte ce que l'API dit avoir
+ * débité. Le reste du code ne sait pas lequel il tient — c'est ce qui permet
+ * d'ajouter un rail sans toucher aux 61 opérations.
+ */
+export interface AppelantSirenic {
+	/** Total dépensé jusqu'ici dans cette exécution, en dollars. */
+	readonly totalPaid: number;
+	call(path: string, timeoutMs: number, dryRun: boolean): Promise<CallResult>;
+}
+
 export interface PaymentSettings {
 	privateKey: string;
 	baseUrl: string;
@@ -219,7 +233,7 @@ export function buildPaymentPayload(
  * A payer bound to one workflow execution, so the per-execution cap is
  * enforced across every item the node processes.
  */
-export class SirenicPayer {
+export class SirenicPayer implements AppelantSirenic {
 	private spent = 0n;
 
 	constructor(private readonly settings: PaymentSettings) {}
@@ -328,7 +342,7 @@ export class SirenicPayer {
  * empty object). Binary is returned as raw bytes: reading a PDF with `.text()`
  * replaces every non-UTF-8 byte and destroys a file the user just paid for.
  */
-async function readBody(
+export async function readBody(
 	response: Response,
 ): Promise<{ body: unknown; binary?: CallResult['binary'] }> {
 	const type = response.headers.get('content-type') ?? '';

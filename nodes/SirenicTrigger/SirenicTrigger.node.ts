@@ -11,7 +11,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { SirenicPayer, type PaymentSettings } from '../Sirenic/x402';
+import { SirenicPayer, type AppelantSirenic, type PaymentSettings } from '../Sirenic/x402';
+import { SirenicKeyCaller } from '../Sirenic/cle-api';
 import { cleEvenement, verifierLivraison, type CleDeSignature } from './signature';
 
 /**
@@ -147,9 +148,14 @@ export class SirenicTrigger implements INodeType {
 		// listens.
 		credentials: [
 			{
+				name: 'sirenicApiKeyApi',
+				required: true,
+				displayOptions: { show: { watchSource: ['managed'], authentication: ['apiKey'] } },
+			},
+			{
 				name: 'sirenicApi',
 				required: true,
-				displayOptions: { show: { watchSource: ['managed'] } },
+				displayOptions: { show: { watchSource: ['managed'], authentication: ['x402'] } },
 			},
 		],
 		webhooks: [
@@ -172,6 +178,35 @@ export class SirenicTrigger implements INodeType {
 			],
 		},
 		properties: [
+			{
+				/**
+				 * Le rail de paiement d'une surveillance. Il n'apparaît qu'en mode
+				 * géré : recevoir les événements d'une watch créée ailleurs ne coûte
+				 * rien et s'autorise par son jeton, donc rien à payer et rien à
+				 * choisir. `apiKey` par défaut depuis la 0.13.0.
+				 */
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				default: 'apiKey',
+				displayOptions: { show: { watchSource: ['managed'] } },
+				options: [
+					{
+						name: 'API Key (Prepaid Credits)',
+						value: 'apiKey',
+						description: 'A key created at api.sirenic.eu/compte, charged against prepaid credits. No wallet, no crypto.',
+					},
+					{
+						name: 'Wallet — USDC on Base',
+						value: 'x402',
+						// « x402 » s'écrit en minuscules : c'est un nom de protocole. La
+						// règle de casse des libellés le transformait en « X402 », d'où
+						// le libellé sans le mot et la mention dans la description.
+						description: 'A Base private key that signs a USDC payment per call over x402. No account needed.',
+					},
+				],
+			},
 			{
 				displayName: 'Watch',
 				name: 'watchSource',
@@ -693,8 +728,7 @@ async function appelPaye(
 	chemin: string,
 	quoi: string,
 ): Promise<IDataObject> {
-	const reglages = await reglagesPaiement.call(this);
-	const payer = new SirenicPayer(reglages);
+	const payer = await appelant.call(this);
 
 	let resultat;
 	try {
@@ -730,6 +764,31 @@ async function appelPaye(
 }
 
 /** Wallet and spending caps, read from the credential and checked before use. */
+/**
+ * L'appelant du rail choisi. Une surveillance se PAIE — par clé d'API et
+ * crédits prépayés (0.13.0) ou par signature x402 — et la suite du trigger
+ * ignore lequel des deux elle tient.
+ */
+async function appelant(this: IHookFunctions | IPollFunctions): Promise<AppelantSirenic> {
+	const rail = this.getNodeParameter('authentication', 'apiKey') as 'apiKey' | 'x402';
+	if (rail === 'apiKey') {
+		const credentials = await this.getCredentials('sirenicApiKeyApi');
+		const apiKey = String(credentials.apiKey ?? '');
+		if (!apiKey.startsWith('srn_')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The Sirenic API key must start with "srn_". Create one at https://api.sirenic.eu/compte.',
+			);
+		}
+		return new SirenicKeyCaller({
+			apiKey,
+			baseUrl: String(credentials.baseUrl ?? BASE_URL_DEFAUT),
+			maxSpendPerExecution: Number(credentials.maxSpendPerExecution ?? 0),
+		});
+	}
+	return new SirenicPayer(await reglagesPaiement.call(this));
+}
+
 async function reglagesPaiement(this: IHookFunctions | IPollFunctions): Promise<PaymentSettings> {
 	const credentials = await this.getCredentials('sirenicApi');
 	const reglages: PaymentSettings = {

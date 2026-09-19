@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.13.0 — 2026-09-19
+
+### An API key instead of a wallet — the friction that kept this node out of finance teams
+
+Until now the only way to use this node was to hold a **Base private key funded
+with USDC**. That is a heavy first step for an accounts-payable team whose whole
+purpose is to check a supplier before paying it, and it is exactly why the twelve
+ready-made workflows on <https://api.sirenic.eu/workflows> use a plain HTTP Request
+node instead of this package.
+
+**Both rails now work, and you pick one in the node itself.**
+
+| | API Key (new, default) | Wallet (x402) |
+| --- | --- | --- |
+| What you hold | A key from <https://api.sirenic.eu/compte>, created with an e-mail and a magic link | A Base private key funded with USDC |
+| How you pay | Prepaid credits, in euros | A USDC payment signed per call |
+| Account needed | Yes | No |
+| Free tier | 150 calls a month on routes at $0.05 or less | — |
+| Same routes, prices and responses | Yes | Yes |
+
+Nothing else changes: the 61 operations, the descriptions and the prices are the
+same on both rails, because only the payment header differs.
+
+### The spending ceiling still exists, and it works differently
+
+On the wallet rail the node refuses a **quote** before signing. On the API-key rail
+there is no quote to refuse, so the ceiling counts what the API **says** it charged
+— the `x-credits-charged` header, one per response — and stops before the call that
+would cross the line. A lot route costs its unit price multiplied by the number of
+entities, so a copied price would have been wrong: only that header knows the real
+amount. Set **Max Spend Per Execution** to 0 to allow an uncapped run, deliberately.
+
+`GET /compte/solde` is the credential test, and it is the only honest one: it is
+free, and unlike `/v1/reperer` it actually **reads** the key, so a wrong key fails
+instead of quietly passing.
+
+### Backward compatibility, said plainly
+
+The new **Authentication** selector defaults to **API Key**. A workflow saved
+before this release has no value stored for it and will therefore open on the new
+rail: set the selector back to *Wallet* and it works exactly as before. This would
+normally be a reason to keep the old default — measured on 2026-08-17, npm
+downloads of this package are bots at 97% or more and real human adoption sits
+between zero and two installations, so the choice is written here rather than
+hidden behind a version bump nobody would read.
+
+### Also
+
+- The trigger offers the same choice: a watch is paid for, on whichever rail you
+  picked. Receiving events from a watch created elsewhere still needs no credential
+  at all.
+- The npm description no longer claims "no API key and no account" — it was true in
+  0.12.0 and false in this one.
+
 ## 0.12.0 — 2026-09-19
 
 ### One dead operation removed, 18 added: the node now covers 113 of the 117 paid routes
