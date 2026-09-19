@@ -83,7 +83,12 @@ The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IB
 | **Search BODACC Announcements** | The other direction: *which* companies entered insolvency in this department this week | $0.03 |
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
-| **Get European Company** | 12 countries under one schema — every live register also has its own dedicated route | $0.01 |
+| **Get European Company** | 19 countries under one schema — every live register also has its own dedicated route | $0.01 |
+| **Get Company Officers** (EU) | Officers and board members from seven national registers, one schema: CY, DK, EE, GB, LV, NO, RO | $0.01 |
+| **Get Insolvency Record** (EU) | Insolvency proceedings from eight official registers: CH, CZ, GB, HR, IE, LT, LV, RO | $0.02 |
+| **Verify Invoice** | The three identifiers printed on an invoice at once: SIREN against Sirene, VAT against VIES, IBAN form and bank | $0.02 |
+| **Compare French Companies** | Two to five side by side — per-axis rankings only, never an overall winner | $0.12 per company |
+| **Get Expiring Public Contracts** | Public contracts whose estimated end date falls in your window — buyers re-tender 4 to 9 months ahead | $0.05 |
 | **Search Associations** | "I have the name of an association" — the national register of associations (RNA), where **one association in two has no SIREN** | $0.002 |
 | **Get Association Profile** | Title, purpose, position, dates, registered office, RUP number — by RNA number | $0.005 |
 | **Get Association Official-Journal Notices** | Creations, modifications and dissolutions published in the JOAFE — the gazette of the nonprofit world | $0.01 |

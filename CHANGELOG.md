@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.12.0 — 2026-09-19
+
+### One dead operation removed, 18 added: the node now covers 113 of the 117 paid routes
+
+The catalogue had drifted from the API. Measured on 2026-09-19 against the live
+OpenAPI (`npm run grille`, new in this release): **one operation called a route
+that no longer exists**, and **43 paid routes had no operation at all**.
+
+**Removed — `Get Capital Links`.** It advertised **$2.00** for
+`/v1/entreprise/{siren}/liens-capitalistiques`, which answers **404**. Nobody could
+have bought it; anyone who tried paid nothing and got an error. There is no
+replacement route: `Get Shareholders` (`/v1/entreprise/{siren}/capital`) is the
+nearest thing and already existed.
+
+**Added — 18 operations covering 43 routes.** Every description now carries the
+price read from the grid at the time of writing, and every coverage reserve is in
+the code, not in a README nobody reads.
+
+| Resource | Operation | Price |
+| --- | --- | --- |
+| Invoicing | **Verify Invoice** — SIREN against Sirene, the invoice VAT number against the computed one and live against VIES, the IBAN form and its bank | $0.02 |
+| French Company | **Get Hiring Signals** — France Travail snapshot: actively-hiring flag, active postings, ROME families, contract mix, Egapro index | $0.02 |
+| Due Diligence | **Get Commercial Court Rulings** — Judilibre open data: court, date, docket, closed-list nature and role, other legal entities | $0.01 |
+| Due Diligence | **Compare French Companies** — two to five side by side, per-axis rankings only, never an overall winner | $0.12/company |
+| Compliance | **Get Collective Agreements** — Légifrance ACCO fund: nature, themes, dates, IDCC, signatory unions. Metadata only, never the text | $0.02 |
+| Procurement | **Get Procurement Competitors** — the rival contractors on a company's own CPV segments | $0.02 |
+| Procurement | **Get Expiring Public Contracts** — contracts whose estimated end date falls in a window of up to 24 months | $0.05 |
+| Procurement | **Get Public Buyer Profile** — a buyer's habits, segments and incumbents whose contracts expire within 18 months | $0.02 |
+| Procurement | **Get EU Research Funding** — CORDIS: every Horizon 2020 and Horizon Europe project, with role and EU contribution | $0.02 |
+| Procurement | **Get National Public Contracts** — ES, GB, LV, PL, PT national procurement registers | $0.02 |
+| Procurement | **Get European Contracts by National ID** — TED award notices for nine countries | $0.02 |
+| European Company | **Get Company Officers** — CY, DK, EE, GB, LV, NO, RO, one schema for all | $0.01 |
+| European Company | **Get Insolvency Record** — CH, CZ, GB, HR, IE, LT, LV, RO | $0.02 |
+| European Company | **Get Registry Events** — CH, EE, FI, HR, LV, NO, PL, SE | $0.02 |
+| European Company | **Get Shareholders** — EE and LV share registers; natural persons counted, never named | $0.02 |
+| European Company | **Get Local Units** — Norwegian underenheter, the SIRET-like establishments | $0.01 |
+| European Company | **Get UK Insolvency Notices** — The Gazette, with the coverage window it actually holds | $0.02 |
+| European Company | **Get Spanish Registry Acts** — BORME section A, by hoja registral | $0.02 |
+
+**Deliberately still absent, and why.** `Create Watch` and `Renew Watch` belong to
+the **Sirenic Trigger**, which owns the subscription lifecycle — that was the n8n
+review's own requirement in 0.6.0, and a one-shot catalogue is the wrong home for a
+thing that must be renewed. The **beneficial-ownership** routes (GB, LV) are not
+exposed: serving a beneficial-ownership endpoint is ruled out by the project's own
+charter, and that conflict is not settled.
+
+### `npm run grille` — the check that would have caught this
+
+`scripts/ecart-grille.mjs` downloads the live OpenAPI and prints, in both
+directions, what the node calls that the API no longer serves and what the API
+sells that the node cannot reach. Run it before every release. Writing this check
+is how the dead $2.00 operation was found, eleven versions after it stopped
+existing.
+
+### Also
+
+- The stale `eslint-disable` on `SirenicTrigger` is gone: the rule stopped firing
+  in plugin 0.33.0, and the portal's scanner ignores inline directives anyway.
+- Lint tooling pinned to the versions the portal actually runs
+  (`@n8n/node-cli` 0.48.5, `@n8n/eslint-plugin-community-nodes` 0.33.0): 43 rules
+  active instead of 42, which is how the stale directive surfaced.
+
 ## 0.11.0 — 2026-09-07
 
 ### Associations (nonprofits): a resource of their own

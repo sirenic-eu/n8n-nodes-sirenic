@@ -65,7 +65,11 @@ describe('operation catalogue', () => {
 		// moved to the Sirenic Trigger: a subscription belongs to the node that
 		// owns its lifecycle, not to a catalogue of one-shot lookups.
 		// 41 → 44 en 0.11.0 : la ressource Associations (recherche RNA, fiche, annonces JOAFE).
-		expect(seen.size).toBe(44);
+		// 44 → 61 en 0.12.0 : `getCapitalLinks` RETIRÉE — elle annonçait $2.00 pour
+		// `/v1/entreprise/{siren}/liens-capitalistiques`, qui rend 404 (mesuré le
+		// 19/09/2026) — et 18 opérations ajoutées pour les 43 routes vendues sans
+		// opération. `npm run grille` recompte l'écart contre l'OpenAPI vivant.
+		expect(seen.size).toBe(61);
 	});
 
 	it('every generated path starts with /v1/ and escapes its parameters', () => {

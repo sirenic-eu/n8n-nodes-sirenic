@@ -122,7 +122,12 @@ interface Cibles {
 // batch, or by the poll timer. Declaring it a tool would offer an agent an entry
 // point that cannot be invoked. The paid lookups are on the main Sirenic node,
 // which IS exposed as a tool.
-// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
+//
+// La directive eslint-disable qui vivait ici est RETIRÉE en 0.12.0 : la règle
+// `node-usable-as-tool` ne mord plus sur un trigger depuis le plugin 0.33.0,
+// et le scanner du portail ignore de toute façon les directives en ligne
+// (`allowInlineConfig: false`). Un disable périmé cache le jour où la règle
+// revient.
 export class SirenicTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sirenic Trigger',
