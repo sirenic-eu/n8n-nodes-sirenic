@@ -1,27 +1,27 @@
 /**
- * Le rail « clé d'API et crédits prépayés » — l'autre façon de payer Sirenic.
+ * The "API key and prepaid credits" rail — the other way to pay Sirenic.
  *
- * Rien n'est signé, rien ne touche une blockchain : la clé part dans l'en-tête
- * `X-Api-Key` et le compte est débité en euros. Mêmes routes, mêmes prix,
- * mêmes réponses que le rail x402 — seul le moyen de paiement change.
+ * Nothing is signed and nothing touches a blockchain: the key travels in the
+ * `X-Api-Key` header and the account is debited in euros. Same routes, same
+ * prices, same responses as the x402 rail — only the means of payment changes.
  *
- * Ce module honore le MÊME contrat que `SirenicPayer` (`AppelantSirenic`), de
- * sorte que les 61 opérations, le node et le trigger ignorent lequel des deux
- * rails ils tiennent.
+ * This module honours the SAME contract as `SirenicPayer` (`AppelantSirenic`),
+ * so the 61 operations, the node and the trigger never know which of the two
+ * rails they hold.
  */
 import { readBody, type AppelantSirenic, type CallResult } from './x402';
 
 export interface KeySettings {
 	apiKey: string;
 	baseUrl: string;
-	/** Plafond de dépense sur UNE exécution, en dollars. 0 = pas de plafond. */
+	/** Spending cap for ONE execution, in dollars. 0 = no cap. */
 	maxSpendPerExecution: number;
 }
 
-/** En-tête par lequel l'API annonce ce qu'elle vient de débiter. */
+/** Header through which the API reports what it has just debited. */
 const ENTETE_DEBIT = 'x-credits-charged';
 
-/** Ce qui reste du quota gratuit mensuel, quand l'API le dit. */
+/** What is left of the monthly free quota, when the API reports it. */
 const ENTETE_QUOTA = 'x-free-quota-remaining';
 
 export class SirenicKeyCaller implements AppelantSirenic {
@@ -30,8 +30,8 @@ export class SirenicKeyCaller implements AppelantSirenic {
 	constructor(private readonly settings: KeySettings) {}
 
 	get totalPaid(): number {
-		// Arrondi au millième : les prix de la grille descendent à $0.002, et une
-		// somme de flottants finit sinon en 0.30000000000000004 dans la sortie.
+		// Rounded to the thousandth: grid prices go down to $0.002, and a sum of
+		// floats would otherwise end up as 0.30000000000000004 in the output.
 		return Math.round(this.depense * 1000) / 1000;
 	}
 
@@ -40,10 +40,10 @@ export class SirenicKeyCaller implements AppelantSirenic {
 
 		if (dryRun) return this.essaiABlanc(url);
 
-		// Le plafond se vérifie AVANT l'appel : après, c'est déjà débité. Il ne
-		// peut pas refuser un devis — ce rail n'en produit pas — donc il compte ce
-		// que l'API DIT avoir débité, appel après appel, et s'arrête avant celui
-		// qui franchirait la ligne.
+		// The cap is checked BEFORE the call: afterwards it is already debited. It
+		// cannot refuse a quote — this rail produces none — so it adds up what the
+		// API SAYS it debited, call after call, and stops before the one that
+		// would cross the line.
 		const plafond = this.settings.maxSpendPerExecution;
 		if (plafond > 0 && this.depense >= plafond) {
 			throw new Error(
@@ -57,8 +57,8 @@ export class SirenicKeyCaller implements AppelantSirenic {
 			signal: AbortSignal.timeout(timeoutMs),
 		});
 
-		// Débité par l'API, pas estimé par nous : un prix recopié dérive, et une
-		// route à lot coûte son prix unitaire MULTIPLIÉ par le nombre d'entités.
+		// Debited by the API, not estimated by us: a copied price drifts, and a
+		// batch route costs its unit price MULTIPLIED by the number of entities.
 		const debite = Number(reponse.headers.get(ENTETE_DEBIT) ?? 0);
 		const paid = Number.isFinite(debite) && debite > 0 ? debite : 0;
 		this.depense += paid;
@@ -77,10 +77,10 @@ export class SirenicKeyCaller implements AppelantSirenic {
 	}
 
 	/**
-	 * Un essai à blanc SANS la clé : l'API répond 402 avec son devis.
+	 * A dry run WITHOUT the key: the API answers 402 with its quote.
 	 *
-	 * C'est gratuit et c'est vrai — le devis vient de la grille, pas d'un prix
-	 * que ce node aurait recopié. Une route gratuite répond 200 et le dit.
+	 * It is free and it is true — the quote comes from the price grid, not from
+	 * a price this node would have copied. A free route answers 200 and says so.
 	 */
 	private async essaiABlanc(url: string): Promise<CallResult> {
 		const sonde = await fetch(url, {

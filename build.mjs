@@ -53,21 +53,21 @@ copyFileSync('nodes/SirenicTrigger/sirenic.light.svg', 'dist/nodes/SirenicTrigge
 copyFileSync('nodes/SirenicTrigger/sirenic.dark.svg', 'dist/nodes/SirenicTrigger/sirenic.dark.svg');
 
 /**
- * Le manifeste promet, `dist/` livre — et on le VÉRIFIE.
+ * The manifest promises, `dist/` delivers — and we CHECK it.
  *
- * Les points d'entrée ci-dessus sont écrits à la main : en 0.13.0, une
- * credential neuve a été déclarée dans `package.json` et oubliée ici. Le paquet
- * se serait publié en annonçant un fichier absent, et n8n aurait échoué à
- * charger la credential chez l'utilisateur — pas chez nous. Un build qui réussit
- * ne prouve pas que ce qu'il promet existe.
+ * The entry points above are written by hand: in 0.13.0 a new credential was
+ * declared in `package.json` and forgotten here. The package would have been
+ * published advertising a missing file, and n8n would have failed to load the
+ * credential on the user's side — not on ours. A build that succeeds does not
+ * prove that what it promises exists.
  */
 const manifeste = JSON.parse(readFileSync('package.json', 'utf8')).n8n;
 const promis = [...(manifeste.credentials ?? []), ...(manifeste.nodes ?? [])];
 const absents = promis.filter((chemin) => !existsSync(chemin));
 if (absents.length) {
-	console.error(`\nLe manifeste n8n annonce ${absents.length} fichier(s) que le build n'a pas produits :`);
+	console.error(`\nThe n8n manifest declares ${absents.length} file(s) the build did not produce:`);
 	for (const chemin of absents) console.error(`  ${chemin}`);
-	console.error("Ajouter son point d'entrée dans build.mjs.");
+	console.error('Add its entry point in build.mjs.');
 	process.exit(1);
 }
-console.log(`Manifeste vérifié : ${promis.length} fichiers annoncés, ${promis.length} présents dans dist/.`);
+console.log(`Manifest checked: ${promis.length} files declared, ${promis.length} present in dist/.`);

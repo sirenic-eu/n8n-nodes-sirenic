@@ -363,7 +363,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Capital Structure',
 				action: 'Get the shareholders of a company',
 				description:
-					'Shareholders extracted by AI from the public articles of association. Legal entities and individuals as filed — never a beneficial-ownership register. ($0.35).',
+					'Shareholders extracted by AI from the latest public articles of association: share capital, legal form, corporate holders named with role and percentage, natural persons counted with their percentage but never named (GDPR). From filed deeds, never a beneficial-ownership register. ($0.35).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/capital`,
 				fields: [SIREN],
 			},
@@ -1388,9 +1388,9 @@ export const RESOURCES: Resource[] = [
 				action: 'Get company officers from a national register',
 				description:
 					'Officers and board members from official national registers, one schema for all: body, role, mandate dates where published, exact current and past counts. Covers Cyprus, Denmark, Estonia, Latvia, Norway, Romania and the United Kingdom only, no other country. ($0.01).',
-				// `p()` rend une CHAÎNE : une liste fermée à deux valeurs rend « false »,
-				// qui est vrai en JavaScript. Tester la valeur, pas la présence —
-				// sinon choisir « No » ajoutait quand même `?inclure_anciens=true`.
+				// `p()` returns a STRING: a two-value options list yields "false",
+				// which is truthy in JavaScript. Test the value, not the presence —
+				// otherwise choosing "No" still appended `?inclure_anciens=true`.
 				path: (p) =>
 					`/v1/eu/entreprise/${enc(p('officersCountry'))}/${enc(p('officersCompanyId'))}/dirigeants` +
 					`${p('inclure_anciens') === 'true' ? '?inclure_anciens=true' : ''}`,

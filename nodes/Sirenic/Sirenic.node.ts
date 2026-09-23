@@ -98,16 +98,15 @@ function operationOptions(resource: string) {
 const PROPERTIES: INodeProperties[] = [
 	{
 		/**
-		 * Le choix du rail, en 0.13.0.
+		 * Choice of payment rail, since 0.13.0.
 		 *
-		 * `apiKey` est le DÉFAUT : le rail wallet demandait à une équipe finance
-		 * ou CRM de détenir une clé privée Base approvisionnée en USDC avant de
-		 * pouvoir consulter un SIREN. Changer un défaut casserait les workflows
-		 * enregistrés qui n'ont pas ce paramètre — mesuré le 17/08/2026, les
-		 * téléchargements npm sont des bots à 97 % et l'adoption humaine réelle
-		 * tient entre zéro et deux installations, donc le risque est nul et il
-		 * est écrit ici plutôt que caché. Un workflow qui tenait au wallet
-		 * repasse le sélecteur sur « x402 » : rien d'autre ne change.
+		 * `apiKey` is the DEFAULT: the wallet rail required a finance or CRM team
+		 * to hold a Base private key funded with USDC before it could look up a
+		 * single SIREN. Changing a default breaks saved workflows that lack this
+		 * parameter — measured on 2026-08-17, npm downloads are 97% bots and real
+		 * human adoption stands between zero and two installs, so the risk is nil,
+		 * and it is written down here rather than hidden. A workflow that relied on
+		 * the wallet only needs the selector set back to "x402": nothing else changes.
 		 */
 		displayName: 'Authentication',
 		name: 'authentication',
@@ -123,9 +122,9 @@ const PROPERTIES: INodeProperties[] = [
 			{
 				name: 'Wallet — USDC on Base',
 				value: 'x402',
-				// « x402 » s'écrit en minuscules : c'est un nom de protocole. La
-				// règle de casse des libellés le transformait en « X402 », d'où
-				// le libellé sans le mot et la mention dans la description.
+				// "x402" is written in lower case: it is a protocol name. The label
+				// casing rule turned it into "X402", hence a label without the word
+				// and the mention in the description instead.
 				description: 'A Base private key that signs a USDC payment per call over x402. No account needed.',
 			},
 		],
@@ -254,8 +253,8 @@ const PROPERTIES: INodeProperties[] = [
 ];
 
 /**
- * L'appelant du rail CLÉ D'API. Rien n'est signé : la clé part en en-tête et le
- * compte est débité en euros.
+ * Caller for the API KEY rail. Nothing is signed: the key travels in a header
+ * and the account is debited in euros.
  */
 async function appelantParCle(this: IExecuteFunctions): Promise<AppelantSirenic> {
 	const credentials = await this.getCredentials('sirenicApiKeyApi');
@@ -274,8 +273,8 @@ async function appelantParCle(this: IExecuteFunctions): Promise<AppelantSirenic>
 }
 
 /**
- * L'appelant du rail WALLET. Les plafonds y sont obligatoires : un node capable
- * de signer un paiement sans plafond est un passif.
+ * Caller for the WALLET rail. Spending caps are mandatory here: a node able to
+ * sign a payment without a cap is a liability.
  */
 async function appelantParWallet(this: IExecuteFunctions): Promise<AppelantSirenic> {
 	const credentials = await this.getCredentials('sirenicApi');
@@ -354,9 +353,9 @@ export class Sirenic implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		// Le rail se lit sur l'item 0 : un sélecteur d'authentification ne
-		// s'exprime pas par item, et un appelant par exécution est ce qui rend le
-		// plafond de dépense opposable à TOUS les items.
+		// The rail is read from item 0: an authentication selector is not a
+		// per-item setting, and one caller per execution is what makes the
+		// spending cap binding across ALL items.
 		const rail = this.getNodeParameter('authentication', 0, 'apiKey') as 'apiKey' | 'x402';
 
 		const payer: AppelantSirenic =

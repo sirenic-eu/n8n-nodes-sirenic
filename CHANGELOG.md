@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.14.0 — 2026-09-23
+
+### Code comments in English — the one finding of the 0.13.0 review
+
+The n8n verification review of 0.13.0 came back with a single finding: code
+comments must be in English. Every comment in the node, the trigger, the build
+script, the grid-gap script and the tests is now in English, and so are the test
+titles. No behaviour changed: same 61 operations, same prices, same two payment
+rails.
+
+### Get Capital Structure: individual shareholders are counted, never named
+
+Since 2026-09-19 the Sirenic API no longer names natural-person shareholders on
+`/v1/entreprise/{siren}/capital` (GDPR): corporate holders are named with their
+role and percentage, natural persons are counted with their percentage. The
+operation's description still said "legal entities and individuals as filed"; it
+now says what the API actually returns. Price unchanged ($0.35).
+
+The node has never exposed a beneficial-ownership operation, for Great Britain or
+Latvia, so the Latvian register the API closed on 2026-09-19 needs no change here.
+
 ## 0.13.0 — 2026-09-19
 
 ### An API key instead of a wallet — the friction that kept this node out of finance teams

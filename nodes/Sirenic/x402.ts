@@ -45,15 +45,15 @@ const DECIMALS = 1_000_000;
 const MARGE_REGLEMENT_MS = 30_000;
 
 /**
- * Ce que le node et le trigger attendent d'un appelant, quel que soit le rail.
+ * What the node and the trigger expect from a caller, whatever the rail.
  *
- * Deux implémentations : `SirenicPayer` signe un paiement x402 par appel, et
- * `SirenicKeyCaller` pose une clé d'API et compte ce que l'API dit avoir
- * débité. Le reste du code ne sait pas lequel il tient — c'est ce qui permet
- * d'ajouter un rail sans toucher aux 61 opérations.
+ * Two implementations: `SirenicPayer` signs one x402 payment per call, and
+ * `SirenicKeyCaller` sends an API key and adds up what the API says it
+ * debited. The rest of the code does not know which one it holds — that is
+ * what allows adding a rail without touching the 61 operations.
  */
 export interface AppelantSirenic {
-	/** Total dépensé jusqu'ici dans cette exécution, en dollars. */
+	/** Total spent so far in this execution, in dollars. */
 	readonly totalPaid: number;
 	call(path: string, timeoutMs: number, dryRun: boolean): Promise<CallResult>;
 }

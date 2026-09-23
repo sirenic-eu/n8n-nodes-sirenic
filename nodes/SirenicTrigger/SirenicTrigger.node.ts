@@ -124,11 +124,11 @@ interface Cibles {
 // point that cannot be invoked. The paid lookups are on the main Sirenic node,
 // which IS exposed as a tool.
 //
-// La directive eslint-disable qui vivait ici est RETIRÉE en 0.12.0 : la règle
-// `node-usable-as-tool` ne mord plus sur un trigger depuis le plugin 0.33.0,
-// et le scanner du portail ignore de toute façon les directives en ligne
-// (`allowInlineConfig: false`). Un disable périmé cache le jour où la règle
-// revient.
+// The eslint-disable directive that used to live here was REMOVED in 0.12.0:
+// the `node-usable-as-tool` rule no longer fires on a trigger since plugin
+// 0.33.0, and the portal scanner ignores inline directives anyway
+// (`allowInlineConfig: false`). A stale disable hides the day the rule
+// comes back.
 export class SirenicTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sirenic Trigger',
@@ -180,10 +180,10 @@ export class SirenicTrigger implements INodeType {
 		properties: [
 			{
 				/**
-				 * Le rail de paiement d'une surveillance. Il n'apparaît qu'en mode
-				 * géré : recevoir les événements d'une watch créée ailleurs ne coûte
-				 * rien et s'autorise par son jeton, donc rien à payer et rien à
-				 * choisir. `apiKey` par défaut depuis la 0.13.0.
+				 * Payment rail of a watch. It only appears in managed mode: receiving
+				 * the events of a watch created elsewhere costs nothing and is
+				 * authorised by its token, so there is nothing to pay and nothing to
+				 * choose. `apiKey` by default since 0.13.0.
 				 */
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -200,9 +200,9 @@ export class SirenicTrigger implements INodeType {
 					{
 						name: 'Wallet — USDC on Base',
 						value: 'x402',
-						// « x402 » s'écrit en minuscules : c'est un nom de protocole. La
-						// règle de casse des libellés le transformait en « X402 », d'où
-						// le libellé sans le mot et la mention dans la description.
+						// "x402" is written in lower case: it is a protocol name. The label
+						// casing rule turned it into "X402", hence a label without the word
+						// and the mention in the description instead.
 						description: 'A Base private key that signs a USDC payment per call over x402. No account needed.',
 					},
 				],
@@ -765,9 +765,9 @@ async function appelPaye(
 
 /** Wallet and spending caps, read from the credential and checked before use. */
 /**
- * L'appelant du rail choisi. Une surveillance se PAIE — par clé d'API et
- * crédits prépayés (0.13.0) ou par signature x402 — et la suite du trigger
- * ignore lequel des deux elle tient.
+ * Caller for the chosen rail. A watch is PAID FOR — by API key and prepaid
+ * credits (0.13.0) or by x402 signature — and the rest of the trigger does
+ * not know which of the two it holds.
  */
 async function appelant(this: IHookFunctions | IPollFunctions): Promise<AppelantSirenic> {
 	const rail = this.getNodeParameter('authentication', 'apiKey') as 'apiKey' | 'x402';
