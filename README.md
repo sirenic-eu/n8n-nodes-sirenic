@@ -25,11 +25,10 @@ legal name and status, the computed intra-EU VAT number checked live against VIE
 the head office and its nineteen establishments. It cost $0.03, paid on the wallet
 rail: settled in USDC on Base, with no account and no API key.
 
-Not sure what a call will cost? Every operation states its price in its description.
-On the wallet rail, the **Dry Run** option also fetches the quote, reports
-`would_pay_usd`, and settles nothing: the node states the price before it spends. On
-the API-key rail, a dry run confirms that the route exists and is billable, without
-sending your key.
+Not sure what a call will cost? Every operation states its price in its description,
+and on either rail the **Dry Run** option fetches the quote the API returns for that
+exact call and reports its price in `would_pay_usd` without spending anything: the node
+states the price before it spends.
 
 **Full demo (1 min 15, no sound, captions on screen):**
 [demo-sirenic-node-full.mp4](https://github.com/sirenic-eu/n8n-nodes-sirenic/blob/main/media/demo-sirenic-node-full.mp4?raw=1)
@@ -211,7 +210,7 @@ On the API-key rail, **Max Spend Per Execution** (default $5.00) adds up what th
 reports it charged and stops before the next call once the ceiling is reached; 0 means no
 ceiling.
 
-On the wallet rail, turn on **Dry Run** in Options to see what a call would cost without
+On either rail, turn on **Dry Run** in Options to see what a call would cost without
 paying for it.
 
 ## Coverage

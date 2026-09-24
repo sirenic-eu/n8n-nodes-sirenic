@@ -9,7 +9,7 @@
  * so the 61 operations, the node and the trigger never know which of the two
  * rails they hold.
  */
-import { readBody, type AppelantSirenic, type CallResult } from './x402';
+import { quotedPriceUsd, readBody, type AppelantSirenic, type CallResult } from './x402';
 
 export interface KeySettings {
 	apiKey: string;
@@ -81,6 +81,11 @@ export class SirenicKeyCaller implements AppelantSirenic {
 	 *
 	 * It is free and it is true — the quote comes from the price grid, not from
 	 * a price this node would have copied. A free route answers 200 and says so.
+	 *
+	 * The price is read from the quote by the same code as the wallet rail, in
+	 * the same field. From 0.13.0 to 0.15.0 this rail only pointed at the
+	 * PAYMENT-REQUIRED header, and n8n shows the body of a response, never its
+	 * headers: the dry run of the default rail stated no price at all.
 	 */
 	private async essaiABlanc(url: string): Promise<CallResult> {
 		const sonde = await fetch(url, {
@@ -91,15 +96,26 @@ export class SirenicKeyCaller implements AppelantSirenic {
 			const libre = await readBody(sonde);
 			return { status: sonde.status, body: libre.body, paid: 0, dryRun: true };
 		}
+		const prix = quotedPriceUsd(sonde.headers.get('payment-required'));
 		return {
 			status: 402,
-			body: {
-				dry_run: true,
-				resource: url,
-				quote: sonde.headers.get('payment-required') ? 'see PAYMENT-REQUIRED header' : null,
-				message:
-					'Dry run: the route exists and is billable. Nothing was called with your key, so nothing was charged.',
-			},
+			body:
+				prix.usd === null
+					? {
+							dry_run: true,
+							would_pay_usd: null,
+							price_unavailable_reason: prix.reason,
+							resource: url,
+							message:
+								'Dry run: the route is billable, but the quote the API sent could not be read, so no price is stated (see price_unavailable_reason). Your key was not sent, so nothing was charged.',
+						}
+					: {
+							dry_run: true,
+							would_pay_usd: prix.usd,
+							resource: url,
+							message:
+								'Dry run: would_pay_usd is the price the API quotes for this call. This rail debits the same number in credits (1 credit = 1 euro), or nothing when your monthly free quota covers the call. Your key was not sent, so nothing was charged.',
+						},
 			paid: 0,
 			dryRun: true,
 		};
