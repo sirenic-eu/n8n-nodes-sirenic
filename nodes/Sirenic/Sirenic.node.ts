@@ -239,7 +239,7 @@ const PROPERTIES: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to check the price and stop without paying. Returns what the call would cost.',
+					'Whether to check the price and stop without paying. Returns what the call would cost in would_pay_usd, on either rail.',
 			},
 			{
 				displayName: 'Timeout (Ms)',

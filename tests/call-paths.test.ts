@@ -66,6 +66,41 @@ describe('dry run', () => {
 		expect(appels).toHaveBeenCalledTimes(1);
 	});
 
+	it('a quote that cannot be read is refused with its reason, and nothing is signed', async () => {
+		// The wallet reads a quote with the same reader as the dry run of the
+		// API-key rail (readQuote). Each unreadable shape must stop the payment
+		// before any signature, with a message a user can act on.
+		const cas: Array<{ entete: string | null; motif: RegExp }> = [
+			{ entete: null, motif: /missing PAYMENT-REQUIRED header/ },
+			{ entete: 'eyJ4NDAy', motif: /not base64-encoded x402 JSON/ },
+			{
+				entete: Buffer.from(JSON.stringify({ x402Version: 1, accepts: [] })).toString('base64'),
+				motif: /Unsupported x402 version in quote: 1\b/,
+			},
+			{
+				entete: Buffer.from(JSON.stringify({ x402Version: 2, accepts: { usdc: 1 } })).toString('base64'),
+				motif: /not base64-encoded x402 JSON/,
+			},
+		];
+		for (const { entete, motif } of cas) {
+			const appels = vi.fn(async () =>
+				new Response('{}', {
+					status: 402,
+					headers: {
+						'content-type': 'application/json',
+						...(entete === null ? {} : { 'payment-required': entete }),
+					},
+				}),
+			);
+			vi.stubGlobal('fetch', appels);
+			const payer = new SirenicPayer(settings);
+			await expect(payer.call('/v1/entreprise/552032534/capital', 120_000, false)).rejects.toThrow(motif);
+			// One request only: nothing was replayed with a signature.
+			expect(appels).toHaveBeenCalledTimes(1);
+			expect(payer.totalPaid).toBe(0);
+		}
+	});
+
 	it('a free endpoint needs no dry run and reports no cost', async () => {
 		vi.stubGlobal(
 			'fetch',

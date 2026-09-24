@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+### Dry Run states the price on the API-key rail
+
+Since 0.13.0 the API key is the default rail, and on that rail Dry Run returned
+`quote: "see PAYMENT-REQUIRED header"` instead of a price. n8n shows the body of a
+response, never its headers, so the option's promise ("Returns what the call would
+cost") was false on the default rail. Affected: 0.13.0 to 0.15.0. The wallet rail was
+not affected.
+
+Dry Run now reads the quote the API returns for the exact call and reports its price in
+`would_pay_usd` on both rails: the amount of the quote's USDC option on Base. The API-key
+rail debits the same number in credits (1 credit = 1 euro), or nothing when the monthly
+free quota covers the call, and the dry run still does not send the key. When the quote
+cannot be read, `would_pay_usd` is `null` and `price_unavailable_reason` says why, from a
+closed list (`no_quote_header`, `unreadable_quote`, `unsupported_x402_version`,
+`no_usdc_on_base_option`). The node never falls back on a price written anywhere else,
+such as the prose of the 402 body. The `quote` field of the old output is gone.
+
+Both rails now read a quote through one function (`readQuote`) and pick its USDC option
+through one predicate (`isUsdcOnBase`), so the price of a dry run and the payment of a
+call cannot disagree on which option is the price. On the wallet rail, a quote that is not
+base64-encoded x402 JSON is now refused with a readable message instead of a JSON parser
+error; nothing else changes there.
+
+`tests/dry-run.test.ts` plays Dry Run through the whole node on both rails, with only the
+chosen rail's credential configured and a quote shaped like the one api.sirenic.eu serves
+(its EURC option listed first, at another amount). On 0.15.0 the API-key cases fail.
+
+Texts: the Dry Run option says it returns the price in `would_pay_usd` on either rail, and
+the README describes Dry Run in one sentence for both rails.
+
+No operation, parameter value or price changed.
+
 ## 0.15.0 (2026-09-24)
 
 ### Sirenic Trigger: a managed watch works on the API-key rail

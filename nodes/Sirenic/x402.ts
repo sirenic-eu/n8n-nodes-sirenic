@@ -115,6 +115,24 @@ export function fromAtomic(atomic: bigint): number {
 }
 
 /**
+ * The one option this node ever reads a price from or pays: the `exact`
+ * scheme, USDC, on Base. Sirenic also quotes EURC at the same number, and
+ * reading or signing that option against a dollar figure would be wrong. The
+ * payment and the price of a dry run, on both rails, select through here: they
+ * cannot disagree on which option is the price.
+ */
+export function isUsdcOnBase(option: unknown): boolean {
+	if (typeof option !== 'object' || option === null) return false;
+	const { scheme, network, asset } = option as Partial<QuoteOption>;
+	return (
+		scheme === 'exact' &&
+		network === NETWORK &&
+		typeof asset === 'string' &&
+		asset.toLowerCase() === USDC.toLowerCase()
+	);
+}
+
+/**
  * Picks the USDC option of a quote and proves it is safe to sign.
  * Exported so it can be tested without touching the network.
  */
@@ -124,12 +142,7 @@ export function checkQuote(
 	spentSoFar: bigint,
 	maxPerExecution: number,
 ): { amount: bigint } {
-	const usdc = options.find(
-		(o) =>
-			o.scheme === 'exact' &&
-			o.network === NETWORK &&
-			o.asset.toLowerCase() === USDC.toLowerCase(),
-	);
+	const usdc = options.find(isUsdcOnBase);
 	if (!usdc) {
 		throw new Error(
 			`No USDC-on-Base option in the payment quote. Sirenic only settles USDC on Base (${NETWORK}); refusing to pay.`,
@@ -159,13 +172,77 @@ export function checkQuote(
 }
 
 /** base64 helpers for the x402 headers (JSON payloads, UTF-8). */
-function decodeHeader(header: string): PaymentRequiredV2 {
+export function decodeHeader(header: string): PaymentRequiredV2 {
 	return JSON.parse(Buffer.from(header, 'base64').toString('utf-8')) as PaymentRequiredV2;
 }
 
 function encodeHeader(payload: unknown): string {
 	return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
 }
+
+/** Why the PAYMENT-REQUIRED header of a 402 could not be read. A closed list. */
+export type QuoteUnreadable = 'no_quote_header' | 'unreadable_quote' | 'unsupported_x402_version';
+
+/**
+ * Reads the PAYMENT-REQUIRED header of a 402: base64-encoded JSON, x402 v2.
+ *
+ * Both rails read a quote here and nowhere else. It never throws: a header that
+ * cannot be read comes back as a reason, and each rail decides what that means.
+ * The wallet refuses to sign; the dry run of the API-key rail states no price.
+ * Neither falls back on a price found elsewhere, such as the prose of the 402
+ * body or a copy in this package: the quote is the only price the API stands
+ * behind, and a copy drifts.
+ */
+export function readQuote(
+	header: string | null,
+): { quote: PaymentRequiredV2 } | { unreadable: QuoteUnreadable; version?: unknown } {
+	if (!header) return { unreadable: 'no_quote_header' };
+	let quote: unknown;
+	try {
+		quote = decodeHeader(header);
+	} catch {
+		return { unreadable: 'unreadable_quote' };
+	}
+	if (typeof quote !== 'object' || quote === null || Array.isArray(quote)) {
+		return { unreadable: 'unreadable_quote' };
+	}
+	const { x402Version, accepts } = quote as PaymentRequiredV2;
+	if (x402Version !== 2) return { unreadable: 'unsupported_x402_version', version: x402Version };
+	if (accepts !== undefined && !Array.isArray(accepts)) return { unreadable: 'unreadable_quote' };
+	return { quote: quote as PaymentRequiredV2 };
+}
+
+/** Why a dry run states no price. A closed list, returned to the workflow. */
+export type PriceUnavailable = QuoteUnreadable | 'no_usdc_on_base_option';
+
+/**
+ * The price a 402 quotes, in dollars: the amount of its USDC option on Base,
+ * read without paying it. When there is no such price, `null` comes with its
+ * reason, never with a guess.
+ */
+export function quotedPriceUsd(
+	header: string | null,
+): { usd: number } | { usd: null; reason: PriceUnavailable } {
+	const lecture = readQuote(header);
+	if ('unreadable' in lecture) return { usd: null, reason: lecture.unreadable };
+	const usdc = (lecture.quote.accepts ?? []).find(isUsdcOnBase);
+	if (!usdc) return { usd: null, reason: 'no_usdc_on_base_option' };
+	// x402 states amounts as integers of atomic units. Anything else is not a
+	// price this node can read, and it is said rather than rounded.
+	const atomique = String(usdc.amount);
+	if (!/^[0-9]+$/.test(atomique)) return { usd: null, reason: 'unreadable_quote' };
+	return { usd: fromAtomic(BigInt(atomique)) };
+}
+
+/** What the wallet rail says when it refuses to sign a quote it cannot read. */
+const REFUS_DEVIS_ILLISIBLE: Record<QuoteUnreadable, (version: unknown) => string> = {
+	no_quote_header: () =>
+		'The endpoint asked for payment but returned no signable quote (missing PAYMENT-REQUIRED header).',
+	unreadable_quote: () =>
+		'The payment quote (PAYMENT-REQUIRED header) is not base64-encoded x402 JSON. Refusing to sign a quote that cannot be read.',
+	unsupported_x402_version: (version) =>
+		`Unsupported x402 version in quote: ${String(version)}. This node speaks x402 v2.`,
+};
 
 /**
  * Builds the x402 v2 PAYMENT-SIGNATURE payload for one accepted requirement:
@@ -257,18 +334,11 @@ export class SirenicPayer implements AppelantSirenic {
 			return { status: preflight.status, body: free.body, paid: 0, binary: free.binary };
 		}
 
-		const header = preflight.headers.get('payment-required');
-		if (!header) {
-			throw new Error(
-				'The endpoint asked for payment but returned no signable quote (missing PAYMENT-REQUIRED header).',
-			);
+		const lecture = readQuote(preflight.headers.get('payment-required'));
+		if ('unreadable' in lecture) {
+			throw new Error(REFUS_DEVIS_ILLISIBLE[lecture.unreadable](lecture.version));
 		}
-		const quote = decodeHeader(header);
-		if (quote.x402Version !== 2) {
-			throw new Error(
-				`Unsupported x402 version in quote: ${quote.x402Version}. This node speaks x402 v2.`,
-			);
-		}
+		const { quote } = lecture;
 		const options = quote.accepts ?? [];
 		const { amount } = checkQuote(options, this.settings, this.spent, this.settings.maxPerExecution);
 
@@ -293,9 +363,7 @@ export class SirenicPayer implements AppelantSirenic {
 		// mutated between the two lookups cannot reach the signer.
 		const accepted = options.find(
 			(o) =>
-				o.scheme === 'exact' &&
-				o.network === NETWORK &&
-				o.asset.toLowerCase() === USDC.toLowerCase() &&
+				isUsdcOnBase(o) &&
 				o.payTo.toLowerCase() === this.settings.payTo.toLowerCase() &&
 				BigInt(o.amount) === amount,
 		);
