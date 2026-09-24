@@ -250,4 +250,79 @@ describe('Dry Run on the API-key rail, when the quote cannot be read', () => {
 		const r = await appelant().call('/v1/kyb/batch?sirens=552032534,652014051', 30_000, true);
 		expect((r.body as Record<string, unknown>).would_pay_usd).toBe(0.21);
 	});
+
+	it('a header that decodes to JSON null, a number or a list: no price, a reason, no crash', async () => {
+		for (const json of ['null', '2', '[]', '"x"']) {
+			const corps = await prixLu(Buffer.from(json).toString('base64'));
+			expect(corps.would_pay_usd, json).toBeNull();
+			expect(corps.price_unavailable_reason, json).toBe('unreadable_quote');
+		}
+	});
+
+	it('an amount that is not a whole number of atomic units, whatever its JSON type: no price, never a throw', async () => {
+		// An object whose toString is not callable makes String() throw; a list
+		// holding one number reads as that number once turned into text.
+		for (const montant of [{ toString: 1 }, [500000], '-500000', '', ' 500000', '0x7a120', true, 0.5, -5]) {
+			const accepts = [{ ...option(USDC, '0', 'USD Coin'), amount: montant }] as unknown as Option[];
+			const corps = await prixLu(entete(accepts));
+			expect(corps.would_pay_usd, JSON.stringify(montant)).toBeNull();
+			expect(corps.price_unavailable_reason, JSON.stringify(montant)).toBe('unreadable_quote');
+		}
+	});
+
+	it('an amount sent as a whole number rather than a string is still read', async () => {
+		const accepts = [{ ...option(USDC, '0', 'USD Coin'), amount: 500000 }] as unknown as Option[];
+		expect((await prixLu(entete(accepts))).would_pay_usd).toBe(0.5);
+	});
+
+	it('accepts null: no USDC option, the same reason as an empty list', async () => {
+		const corps = await prixLu(
+			Buffer.from(JSON.stringify({ x402Version: 2, accepts: null })).toString('base64'),
+		);
+		expect(corps.would_pay_usd).toBeNull();
+		expect(corps.price_unavailable_reason).toBe('no_usdc_on_base_option');
+	});
+
+	it('an option the node does not understand is skipped, and the USDC option still gives the price', async () => {
+		const accepts = [
+			null,
+			{ scheme: 'exact', network: NETWORK, payTo: PAY_TO, amount: '9' },
+			option(USDC, '500000', 'USD Coin'),
+		] as unknown as Option[];
+		expect((await prixLu(entete(accepts))).would_pay_usd).toBe(0.5);
+	});
+});
+
+describe.each(RAILS)('Dry Run on the $rail rail, when the API answers an error', ({ rail, identifiants }) => {
+	// Not a quote, so not a dry-run answer: an error must fail the node as any
+	// call does. Flagged as a dry run, a 429 or a 503 came out of the API-key
+	// rail as a normal item carrying no price, while the wallet rail failed.
+	it.each([
+		{ statut: 429, corps: 'Too many requests', type: 'text/plain' },
+		{ statut: 503, corps: JSON.stringify({ error: 'service_indisponible' }), type: 'application/json' },
+	])('a $statut fails the node, as any call does', async ({ statut, corps, type }) => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(corps, { status: statut, headers: { 'content-type': type } })),
+		);
+		await expect(new Sirenic().execute.call(contexte(rail, identifiants))).rejects.toThrow(
+			new RegExp(`Sirenic returned ${statut}`),
+		);
+	});
+
+	it('a free route answers with its data, and nothing is charged', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				new Response(JSON.stringify({ suggestions: [] }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				}),
+			),
+		);
+		const sortie = await essai(rail, identifiants);
+		expect(sortie.suggestions).toEqual([]);
+		expect(sortie._sirenic.status).toBe(200);
+		expect(sortie._sirenic.paid_usd).toBe(0);
+	});
 });

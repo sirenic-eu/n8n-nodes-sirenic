@@ -93,8 +93,12 @@ export class SirenicKeyCaller implements AppelantSirenic {
 			signal: AbortSignal.timeout(30_000),
 		});
 		if (sonde.status !== 402) {
-			const libre = await readBody(sonde);
-			return { status: sonde.status, body: libre.body, paid: 0, dryRun: true };
+			// Not a quote, so not a dry-run answer: a free route answers with its
+			// data and an error stays an error, exactly as on the wallet rail. Flagged
+			// as a dry run (up to this version), a 429 or a 503 came out of this rail
+			// as a normal item carrying no price.
+			const { body, binary } = await readBody(sonde);
+			return { status: sonde.status, body, paid: 0, ...(binary ? { binary } : {}) };
 		}
 		const prix = quotedPriceUsd(sonde.headers.get('payment-required'));
 		return {

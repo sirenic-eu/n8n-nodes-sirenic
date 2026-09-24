@@ -19,15 +19,32 @@ closed list (`no_quote_header`, `unreadable_quote`, `unsupported_x402_version`,
 `no_usdc_on_base_option`). The node never falls back on a price written anywhere else,
 such as the prose of the 402 body. The `quote` field of the old output is gone.
 
-Both rails now read a quote through one function (`readQuote`) and pick its USDC option
-through one predicate (`isUsdcOnBase`), so the price of a dry run and the payment of a
-call cannot disagree on which option is the price. On the wallet rail, a quote that is not
-base64-encoded x402 JSON is now refused with a readable message instead of a JSON parser
-error; nothing else changes there.
+A dry run on the API-key rail that gets an answer other than a quote now behaves as on the
+wallet rail: a free route returns its data, and an error (a rate limit, a server error)
+fails the node like any call, instead of coming back as a normal item with no price.
+
+Both rails now read a quote through one function (`readQuote`), pick its USDC option
+through one predicate (`isUsdcOnBase`) and read its amount through one parser
+(`atomicAmount`), so the price of a dry run and the payment of a call cannot disagree. On
+the wallet rail this changes three things, all at the edges of what a quote may contain:
+
+- An amount that is not a whole number of atomic units is refused before anything is
+  signed. `BigInt()` accepted an empty, padded or hexadecimal amount, a boolean and a
+  one-number list, and a negative amount was signed, which also lowered the execution
+  total and loosened the cap for the next calls.
+- A quote that cannot be read as x402 JSON, or whose list of options is not a list, is
+  refused with a readable message instead of a JavaScript error. A quote with no list of
+  options still gets "No USDC-on-Base option".
+- An option the node does not understand (a null entry, an option without an asset) is
+  skipped instead of making the call fail, as x402 clients do with options they cannot
+  use. The USDC option on Base is still found, and still has to pass the payment address
+  and both spending caps before anything is signed.
 
 `tests/dry-run.test.ts` plays Dry Run through the whole node on both rails, with only the
 chosen rail's credential configured and a quote shaped like the one api.sirenic.eu serves
-(its EURC option listed first, at another amount). On 0.15.0 the API-key cases fail.
+(its EURC option listed first, at another amount), plus malformed headers and amounts and
+error answers. On 0.15.0 the API-key cases fail. `tests/call-paths.test.ts` covers the
+wallet refusals above, none of which signs anything.
 
 Texts: the Dry Run option says it returns the price in `would_pay_usd` on either rail, and
 the README describes Dry Run in one sentence for both rails.
