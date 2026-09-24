@@ -115,6 +115,20 @@ export function fromAtomic(atomic: bigint): number {
 }
 
 /**
+ * An x402 amount in atomic units: a string of digits, the form the protocol
+ * states, or a non-negative safe integer. Anything else (negative, empty,
+ * padded or hexadecimal, a boolean, an object, a list) is not a price and comes
+ * back as null. `BigInt()` alone accepts most of those, and a negative amount
+ * used to be signed. The payment and the dry run read amounts here only, so a
+ * quote cannot be signed for an amount the dry run would call unreadable.
+ */
+export function atomicAmount(value: unknown): bigint | null {
+	if (typeof value === 'string') return /^[0-9]+$/.test(value) ? BigInt(value) : null;
+	if (typeof value === 'number') return Number.isSafeInteger(value) && value >= 0 ? BigInt(value) : null;
+	return null;
+}
+
+/**
  * The one option this node ever reads a price from or pays: the `exact`
  * scheme, USDC, on Base. Sirenic also quotes EURC at the same number, and
  * reading or signing that option against a dollar figure would be wrong. The
@@ -154,7 +168,12 @@ export function checkQuote(
 		);
 	}
 
-	const amount = BigInt(usdc.amount);
+	const amount = atomicAmount(usdc.amount);
+	if (amount === null) {
+		throw new Error(
+			`The USDC amount in the payment quote (${String(JSON.stringify(usdc.amount)).slice(0, 40)}) is not a whole number of atomic units. Refusing to sign.`,
+		);
+	}
 	const perCall = toAtomic(settings.maxPerCall);
 	if (amount > perCall) {
 		throw new Error(
@@ -208,7 +227,12 @@ export function readQuote(
 	}
 	const { x402Version, accepts } = quote as PaymentRequiredV2;
 	if (x402Version !== 2) return { unreadable: 'unsupported_x402_version', version: x402Version };
-	if (accepts !== undefined && !Array.isArray(accepts)) return { unreadable: 'unreadable_quote' };
+	// No list at all (absent or null) offers no option, as in 0.15.0; a list of
+	// the wrong type cannot be read. Entries the node does not understand are
+	// left to the option predicate, which skips them.
+	if (accepts !== undefined && accepts !== null && !Array.isArray(accepts)) {
+		return { unreadable: 'unreadable_quote' };
+	}
 	return { quote: quote as PaymentRequiredV2 };
 }
 
@@ -227,11 +251,10 @@ export function quotedPriceUsd(
 	if ('unreadable' in lecture) return { usd: null, reason: lecture.unreadable };
 	const usdc = (lecture.quote.accepts ?? []).find(isUsdcOnBase);
 	if (!usdc) return { usd: null, reason: 'no_usdc_on_base_option' };
-	// x402 states amounts as integers of atomic units. Anything else is not a
-	// price this node can read, and it is said rather than rounded.
-	const atomique = String(usdc.amount);
-	if (!/^[0-9]+$/.test(atomique)) return { usd: null, reason: 'unreadable_quote' };
-	return { usd: fromAtomic(BigInt(atomique)) };
+	// Not a whole number of atomic units: said, never rounded or guessed.
+	const atomique = atomicAmount(usdc.amount);
+	if (atomique === null) return { usd: null, reason: 'unreadable_quote' };
+	return { usd: fromAtomic(atomique) };
 }
 
 /** What the wallet rail says when it refuses to sign a quote it cannot read. */
@@ -239,7 +262,7 @@ const REFUS_DEVIS_ILLISIBLE: Record<QuoteUnreadable, (version: unknown) => strin
 	no_quote_header: () =>
 		'The endpoint asked for payment but returned no signable quote (missing PAYMENT-REQUIRED header).',
 	unreadable_quote: () =>
-		'The payment quote (PAYMENT-REQUIRED header) is not base64-encoded x402 JSON. Refusing to sign a quote that cannot be read.',
+		'The payment quote (PAYMENT-REQUIRED header) cannot be read as an x402 quote: it is not base64-encoded JSON, or not shaped as one. Refusing to sign a quote that cannot be read.',
 	unsupported_x402_version: (version) =>
 		`Unsupported x402 version in quote: ${String(version)}. This node speaks x402 v2.`,
 };
@@ -365,7 +388,7 @@ export class SirenicPayer implements AppelantSirenic {
 			(o) =>
 				isUsdcOnBase(o) &&
 				o.payTo.toLowerCase() === this.settings.payTo.toLowerCase() &&
-				BigInt(o.amount) === amount,
+				atomicAmount(o.amount) === amount,
 		);
 		if (!accepted) {
 			throw new Error('Quote changed between check and signature. Refusing to sign.');

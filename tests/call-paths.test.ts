@@ -70,17 +70,15 @@ describe('dry run', () => {
 		// The wallet reads a quote with the same reader as the dry run of the
 		// API-key rail (readQuote). Each unreadable shape must stop the payment
 		// before any signature, with a message a user can act on.
+		const b64 = (json: unknown) => Buffer.from(JSON.stringify(json)).toString('base64');
 		const cas: Array<{ entete: string | null; motif: RegExp }> = [
 			{ entete: null, motif: /missing PAYMENT-REQUIRED header/ },
-			{ entete: 'eyJ4NDAy', motif: /not base64-encoded x402 JSON/ },
-			{
-				entete: Buffer.from(JSON.stringify({ x402Version: 1, accepts: [] })).toString('base64'),
-				motif: /Unsupported x402 version in quote: 1\b/,
-			},
-			{
-				entete: Buffer.from(JSON.stringify({ x402Version: 2, accepts: { usdc: 1 } })).toString('base64'),
-				motif: /not base64-encoded x402 JSON/,
-			},
+			{ entete: 'eyJ4NDAy', motif: /cannot be read as an x402 quote/ },
+			{ entete: b64(null), motif: /cannot be read as an x402 quote/ },
+			{ entete: b64({ x402Version: 1, accepts: [] }), motif: /Unsupported x402 version in quote: 1\b/ },
+			{ entete: b64({ x402Version: 2, accepts: { usdc: 1 } }), motif: /cannot be read as an x402 quote/ },
+			// As in 0.15.0: a quote with no list of options offers no USDC option.
+			{ entete: b64({ x402Version: 2, accepts: null }), motif: /No USDC-on-Base option/ },
 		];
 		for (const { entete, motif } of cas) {
 			const appels = vi.fn(async () =>
@@ -99,6 +97,80 @@ describe('dry run', () => {
 			expect(appels).toHaveBeenCalledTimes(1);
 			expect(payer.totalPaid).toBe(0);
 		}
+	});
+
+	it('an amount that is not a whole number of atomic units is refused before signing', async () => {
+		// 0.15.0 read amounts with BigInt(), which accepts "", " 500000", "0x7a120",
+		// true and a one-number list, and signs "-1000000": a negative payment
+		// that also lowered the execution total, loosening the cap for the next
+		// calls. The dry run of the API-key rail reads amounts with the same
+		// parser, so both rails refuse the same amounts.
+		for (const montant of ['-1000000', '', ' 500000', '0x7a120', true, [500000], { toString: 1 }, 0.5]) {
+			const appels = vi.fn(async () =>
+				new Response('{}', {
+					status: 402,
+					headers: {
+						'content-type': 'application/json',
+						'payment-required': Buffer.from(
+							JSON.stringify({
+								x402Version: 2,
+								accepts: [
+									{
+										scheme: 'exact',
+										network: NETWORK,
+										asset: USDC,
+										payTo: PAY_TO,
+										amount: montant,
+										maxTimeoutSeconds: 120,
+										extra: { name: 'USD Coin', version: '2' },
+									},
+								],
+							}),
+						).toString('base64'),
+					},
+				}),
+			);
+			vi.stubGlobal('fetch', appels);
+			const payer = new SirenicPayer(settings);
+			await expect(payer.call('/v1/entreprise/552032534/capital', 120_000, false), JSON.stringify(montant)).rejects.toThrow(
+				/not a whole number of atomic units/,
+			);
+			expect(appels, JSON.stringify(montant)).toHaveBeenCalledTimes(1);
+			expect(payer.totalPaid).toBe(0);
+		}
+	});
+
+	it('an option the node does not understand is skipped, and only the checked USDC option is signed', async () => {
+		const signees: Array<Record<string, unknown>> = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url: string, init?: RequestInit) => {
+				const signature = new Headers(init?.headers).get('PAYMENT-SIGNATURE');
+				if (signature) {
+					signees.push(JSON.parse(Buffer.from(signature, 'base64').toString('utf8')));
+					return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
+				}
+				const devis = JSON.parse(Buffer.from(quoteHeader('350000'), 'base64').toString('utf8'));
+				devis.accepts = [null, { scheme: 'exact', network: NETWORK, payTo: PAY_TO, amount: '1' }, ...devis.accepts];
+				return new Response('{}', {
+					status: 402,
+					headers: {
+						'content-type': 'application/json',
+						'payment-required': Buffer.from(JSON.stringify(devis)).toString('base64'),
+					},
+				});
+			}),
+		);
+		const payer = new SirenicPayer(settings);
+		const r = await payer.call('/v1/entreprise/552032534/capital', 120_000, false);
+
+		expect(r.status).toBe(200);
+		expect(r.paid).toBe(0.35);
+		expect(signees).toHaveLength(1);
+		const accepte = signees[0]!.accepted as Record<string, unknown>;
+		expect(accepte.asset).toBe(USDC);
+		expect(accepte.payTo).toBe(PAY_TO);
+		expect(accepte.amount).toBe('350000');
 	});
 
 	it('a free endpoint needs no dry run and reports no cost', async () => {
