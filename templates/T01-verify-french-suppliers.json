@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Verify French suppliers before paying invoices\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nFinance and accounts-payable teams paying French suppliers, and anyone exposed to wire-transfer fraud.\n\n### How it works\nEach new supplier row in your Google Sheet triggers one Sirenic call ($0.03) that checks official registries: legal identity and status, the intra-EU VAT number live against VIES, IBAN structure with bank identification — and returns a deterministic ready-to-invoice verdict (pret_a_facturer) with closed-list reasons. Verified suppliers are appended to your log; blocked ones alert your purchasing channel on Slack with the exact reasons. Note: not a payee verification — the account holder name is never checked. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Point both Google Sheets nodes to your payment sheet (columns SIREN, optional IBAN).\n3. Pick your Slack channel. Test with SIREN 552032534.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Slack credentials.\n\n### How to customize\nAdd the Default Risk Score operation ($0.10) before granting payment terms; swap Sheets for Airtable or your ERP; route alerts to Teams or email.",
+        "content": "## Verify French suppliers before paying invoices\n\n### Who's it for\nFinance and accounts-payable teams paying French suppliers, and anyone exposed to wire-transfer fraud.\n\n### How it works\nEach new supplier row in your Google Sheet triggers one Sirenic call ($0.03) that checks official registries: legal identity and status, the intra-EU VAT number live against VIES, IBAN structure with bank identification. It returns a deterministic ready-to-invoice verdict (pret_a_facturer) with closed-list reasons. Verified suppliers are appended to your log; blocked ones alert your purchasing channel on Slack with the exact reasons. Note: not a payee verification, the account holder name is never checked. Failed requests are never billed.\n\n### How to set up\n1. Create a Sirenic API key at https://api.sirenic.eu/compte (e-mail and magic link).\n2. Add a Header Auth credential in n8n (name X-Api-Key, value your srn_live_ key) and select it on the HTTP Request node.\n3. Point both Google Sheets nodes to your payment sheet (columns SIREN, optional IBAN).\n4. Pick your Slack channel. Test with SIREN 552032534.\n\n### Requirements\nn8n Cloud or self-hosted, native nodes only · a Sirenic API key (pay-per-call, no subscription) · Google Sheets and Slack credentials.\n\n### How to customize\nAdd a call to the default risk score (/v1/score/defaillance/{siren}, $0.10) before granting payment terms; swap Sheets for Airtable or your ERP; route alerts to Teams or email.",
         "height": 986,
         "width": 560
       },
@@ -81,15 +81,15 @@
     },
     {
       "parameters": {
-        "resource": "invoicing",
-        "operation": "getFrenchPack",
-        "siren": "={{ $json.SIREN }}",
-        "iban": "={{ $json.IBAN || '' }}"
+        "url": "=https://api.sirenic.eu/v1/facturation/dossier?siren={{ encodeURIComponent(String(($json.SIREN) || '').trim()) }}{{ String(($json.IBAN || '') || '').trim() ? '&iban=' + encodeURIComponent(String(($json.IBAN || '') || '').trim()) : '' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
       },
       "id": "sirenic-verify-t01",
       "name": "Verify supplier before payment",
-      "type": "n8n-nodes-sirenic.sirenic",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         80,
         240
@@ -147,7 +147,7 @@
           "value": {
             "SIREN": "={{ $('New supplier to pay').item.json.SIREN }}",
             "Supplier": "={{ $json.destinataire.destinataire.denomination }}",
-            "Status": "OK — ready to invoice",
+            "Status": "OK: ready to invoice",
             "VAT (VIES)": "={{ $json.tva_vies ? $json.tva_vies.statut : 'not checked' }}",
             "Checked at": "={{ $now.toISO() }}"
           },
@@ -173,7 +173,7 @@
           "mode": "list",
           "value": ""
         },
-        "text": "=:no_entry: *Supplier blocked before payment*\nSIREN {{ $('New supplier to pay').item.json.SIREN }} — {{ $json.destinataire.destinataire.denomination }}\n*Reasons:* {{ ($json.verdict.raisons || []).join(', ') }}\nVAT (VIES): {{ $json.tva_vies ? $json.tva_vies.statut : 'not checked' }} · IBAN: {{ $json.banque ? ($json.banque.valide ? 'structure valid — ' + ($json.banque.banque.identifiee ? $json.banque.banque.nom : 'bank not identified') : 'INVALID') : 'not provided' }}\nSource: {{ $json.source }}",
+        "text": "=:no_entry: *Supplier blocked before payment*\nSIREN {{ $('New supplier to pay').item.json.SIREN }}: {{ $json.destinataire.destinataire.denomination }}\n*Reasons:* {{ ($json.verdict.raisons || []).join(', ') }}\nVAT (VIES): {{ $json.tva_vies ? $json.tva_vies.statut : 'not checked' }} · IBAN: {{ $json.banque ? ($json.banque.valide ? 'structure valid, ' + ($json.banque.banque.identifiee ? $json.banque.banque.nom : 'bank not identified') : 'INVALID') : 'not provided' }}\nSource: {{ $json.source }}",
         "otherOptions": {}
       },
       "id": "slack-blocked-t01",

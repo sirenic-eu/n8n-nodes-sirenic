@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Chat with the French company registry\n\n### Who's it for\nAnalysts, sales, compliance and founders who want answers about French or European companies in plain language.\n\n### How it works\nA chat trigger feeds an AI Agent connected to the Sirenic MCP server: 68 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools and getting exact price quotes is free; data calls are pay-per-call from $0.002 — no account, no API key, no subscription. When a tool requires payment, the agent reports the exact quote instead of charging blindly; failed requests are never billed.\n\n### How to set up\n1. Add credentials for your chat model (OpenAI or any other).\n2. Open the chat and ask a question — the MCP endpoint needs no registration.\n\n### Requirements\nn8n 1.104+ (MCP Client Tool, Streamable HTTP) — works on n8n Cloud. A chat-model credential.\n\n### How to customize\nSwap the chat model; restrict the tool list in the MCP Client node; to execute paid lookups automatically, use the Sirenic community node (self-hosted), which signs x402 payments for you.",
+        "content": "## Chat with the French company registry\n\n### Who's it for\nAnalysts, sales, compliance and founders who want answers about French or European companies in plain language.\n\n### How it works\nA chat trigger feeds an AI Agent connected to the Sirenic MCP server: more than 100 tools over official sources (INSEE Sirene, INPI, BODACC, six sanctions lists, national registers across Europe). The agent picks the right tool: ask « Is Danone financially healthy? », « Screen ACME SAS against sanctions lists », « Who runs SIREN 552032534? ». Listing tools is free; data calls are pay-per-call from $0.002, billed to your API key, with no subscription. Failed requests are never billed.\n\n### How to set up\n1. Create a Sirenic API key at https://api.sirenic.eu/compte (e-mail and magic link).\n2. On the MCP Client Tool node (endpoint https://api.sirenic.eu/mcp/connecteur), add a Header Auth credential: name X-Api-Key, value your srn_live_ key.\n3. Add credentials for your chat model (OpenAI or any other), then open the chat and ask a question.\n\n### Requirements\nn8n 1.104+ (MCP Client Tool, Streamable HTTP), so it works on n8n Cloud. A chat-model credential and a Sirenic API key.\n\n### How to customize\nSwap the chat model; restrict the tool list in the MCP Client node to the routes your team is allowed to buy.",
         "height": 866,
         "width": 560
       },
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "content": "### How payment works\nPaid tools return a payment_required envelope with an exact quote instead of charging blindly — the agent reports the price and what the tool would return. To execute paid calls, pass a signed x402 payment via the x_payment parameter (see api.sirenic.eu docs) or use the Sirenic community node (self-hosted). Errors are never billed.",
+        "content": "### How billing works\nEvery tool call carries your Sirenic API key (the Header Auth credential of the MCP Client Tool node), so paid tools run directly and are billed to your account at their grid price. Listing tools is free, and errors are never billed.",
         "height": 285,
         "width": 380,
         "color": 7
@@ -49,7 +49,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You are a company-intelligence assistant for French and European companies, powered by Sirenic: official registry data (INSEE Sirene, INPI, BODACC, six sanctions lists, eleven EU national registers) exposed as MCP tools.\n\nRules:\n- Listing tools and obtaining quotes is free. Data tools are pay-per-call (from $0.002).\n- When a tool returns a payment_required envelope, do NOT retry: report the exact price, what the tool would return, and the payment hint.\n- Never invent company data. Only state what a tool actually returned, and cite the source field.\n- Prefer the cheapest tool that answers the question (search $0.002, profile $0.005) before expensive ones.\n- Answer in the user's language. Amounts and dates exactly as returned."
+          "systemMessage": "You are a company-intelligence assistant for French and European companies, powered by Sirenic: official registry data (INSEE Sirene, INPI, BODACC, six sanctions lists, national registers across Europe) exposed as MCP tools.\n\nRules:\n- Listing tools and obtaining quotes is free. Data tools are pay-per-call (from $0.002).\n- When a tool returns a payment_required envelope, do NOT retry: report the exact price, what the tool would return, and the payment hint.\n- Never invent company data. Only state what a tool actually returned, and cite the source field.\n- Prefer the cheapest tool that answers the question (search $0.002, profile $0.005) before expensive ones.\n- Answer in the user's language. Amounts and dates exactly as returned."
         }
       },
       "id": "agent-t10",
@@ -95,14 +95,14 @@
     },
     {
       "parameters": {
-        "endpointUrl": "https://api.sirenic.eu/mcp",
+        "endpointUrl": "https://api.sirenic.eu/mcp/connecteur",
         "serverTransport": "httpStreamable",
-        "authentication": "none",
+        "authentication": "headerAuth",
         "include": "all",
         "options": {}
       },
       "id": "mcp-t10",
-      "name": "Sirenic MCP (68 tools)",
+      "name": "Sirenic MCP server",
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "typeVersion": 1.1,
       "position": [
@@ -134,23 +134,23 @@
         ]
       ]
     },
-    "Sirenic MCP (68 tools)": {
-      "ai_tool": [
-        [
-          {
-            "node": "French registry agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Conversation memory": {
       "ai_memory": [
         [
           {
             "node": "French registry agent",
             "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sirenic MCP server": {
+      "ai_tool": [
+        [
+          {
+            "node": "French registry agent",
+            "type": "ai_tool",
             "index": 0
           }
         ]

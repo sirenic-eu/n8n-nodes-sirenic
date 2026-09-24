@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Check French e-invoicing readiness (2026 mandate)\n\n**Disclaimer: this template uses the Sirenic community node, so it runs on self-hosted n8n only.**\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only — Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Install the n8n-nodes-sirenic community node and create Sirenic credentials.\n2. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Warnings` — filled by the workflow).\n3. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n4. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nSelf-hosted n8n · Sirenic community node (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add Verify VAT Number ($0.003) for a live VIES check; send the summary to Slack instead of email.",
+        "content": "## Check French e-invoicing readiness (2026 mandate)\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only: Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Create a Sirenic API key at https://api.sirenic.eu/compte (e-mail and magic link).\n2. Add a Header Auth credential in n8n (name X-Api-Key, value your srn_live_ key) and select it on the HTTP Request node.\n3. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Warnings`, filled by the workflow).\n4. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n5. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nn8n Cloud or self-hosted, native nodes only · a Sirenic API key (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add a live VIES check of the VAT number (/v1/tva/verifier/{numero}, $0.003); send the summary to Slack instead of email.",
         "height": 1144,
         "width": 560
       },
@@ -120,14 +120,15 @@
     },
     {
       "parameters": {
-        "resource": "invoicing",
-        "operation": "prepareEInvoicing",
-        "siren": "={{ $json.SIREN }}"
+        "url": "=https://api.sirenic.eu/v1/entreprise/{{ encodeURIComponent(String(($json.SIREN) || '').trim()) }}/facturation-prep",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
       },
       "id": "sirenic-prep-t08",
       "name": "Get e-invoicing readiness",
-      "type": "n8n-nodes-sirenic.sirenic",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         480,
         400
@@ -191,9 +192,9 @@
     {
       "parameters": {
         "sendTo": "",
-        "subject": "=E-invoicing readiness — {{ $json.data.length }} customers checked",
+        "subject": "=E-invoicing readiness: {{ $json.data.length }} customers checked",
         "emailType": "text",
-        "message": "=E-invoicing readiness audit ({{ $now.format('yyyy-MM-dd') }})\n\nCustomers checked: {{ $json.data.length }}\nWith warnings: {{ $json.data.filter(d => (d.avertissements || []).length > 0).length }}\n\nDetail:\n{{ $json.data.map(d => '- ' + d.destinataire.denomination + ' (SIREN ' + d.siren + ') — VAT ' + d.tva.numero_intracommunautaire_calcule + ' — reception due ' + d.calendrier_reforme.reception_obligatoire_depuis + ', issuing due ' + d.calendrier_reforme.emission_obligatoire_depuis + ((d.avertissements || []).length ? ' — WARNINGS: ' + d.avertissements.join('; ') : '')).join('\\n') }}\n\nObligation dates are indicative, derived from each company's INSEE size category. Sirenic is not an accredited platform (PDP): preparation data only, no invoice is issued or routed.\nSource: official French registries (INSEE Sirene / INPI RNE).",
+        "message": "=E-invoicing readiness audit ({{ $now.format('yyyy-MM-dd') }})\n\nCustomers checked: {{ $json.data.length }}\nWith warnings: {{ $json.data.filter(d => (d.avertissements || []).length > 0).length }}\n\nDetail:\n{{ $json.data.map(d => '- ' + d.destinataire.denomination + ' (SIREN ' + d.siren + '), VAT ' + d.tva.numero_intracommunautaire_calcule + ', reception due ' + d.calendrier_reforme.reception_obligatoire_depuis + ', issuing due ' + d.calendrier_reforme.emission_obligatoire_depuis + ((d.avertissements || []).length ? '; WARNINGS: ' + d.avertissements.join('; ') : '')).join('\\n') }}\n\nObligation dates are indicative, derived from each company's INSEE size category. Sirenic is not an accredited platform (PDP): preparation data only, no invoice is issued or routed.\nSource: official French registries (INSEE Sirene / INPI RNE).",
         "options": {}
       },
       "id": "gmail-t08",
