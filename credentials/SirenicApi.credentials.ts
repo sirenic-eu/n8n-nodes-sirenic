@@ -48,7 +48,7 @@ export class SirenicApi implements ICredentialType {
 			required: true,
 			placeholder: '0x…',
 			description:
-				'Private key of a Base (mainnet) wallet holding USDC. Used only to sign payments locally — never sent to Sirenic or to any third party. Use a dedicated wallet funded with a small amount, never your main one.',
+				'Private key of a Base (mainnet) wallet holding USDC. Used only to sign payments locally, never sent to Sirenic or to any third party. Use a dedicated wallet funded with a small amount, never your main one.',
 		},
 		{
 			displayName: 'Max Amount Per Call (USD)',

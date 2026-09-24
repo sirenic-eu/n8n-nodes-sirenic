@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { IHookFunctions } from 'n8n-workflow';
 import { NETWORK, USDC } from '../nodes/Sirenic/x402';
 import { SirenicTrigger } from '../nodes/SirenicTrigger/SirenicTrigger.node';
+import { lecteurIdentifiants } from './helpers/identifiants';
 
 const PAY_TO = '0x76A672EEe56D29D475b0715cc03B8C99D70EC8A2';
 // Test-only key, never used anywhere else.
@@ -27,7 +28,8 @@ const BASE = 'https://api.example.test';
 const URL_WEBHOOK = 'https://n8n.example.test/webhook/6f2a/webhook';
 const CIBLES = '552032534,542065479';
 
-const hooks = new SirenicTrigger().webhookMethods.default;
+const trigger = new SirenicTrigger();
+const hooks = trigger.webhookMethods.default;
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -75,13 +77,21 @@ function contexte(o: Options = {}) {
 		getMode: () => o.mode ?? 'trigger',
 		getActivationMode: () => o.activation ?? 'activate',
 		getNodeWebhookUrl: () => URL_WEBHOOK,
-		getCredentials: async () => ({
-			privateKey: KEY,
-			baseUrl: BASE,
-			payTo: PAY_TO,
-			maxAmountPerCall: 2,
-			maxAmountPerExecution: 10,
-		}),
+		// Only the wallet is configured, and it is read through n8n's own display
+		// rule: the both-rails cases live in trigger-rails.test.ts.
+		getCredentials: lecteurIdentifiants(
+			trigger.description,
+			params as Parameters<typeof lecteurIdentifiants>[1],
+			{
+				sirenicApi: {
+					privateKey: KEY,
+					baseUrl: BASE,
+					payTo: PAY_TO,
+					maxAmountPerCall: 2,
+					maxAmountPerExecution: 10,
+				},
+			},
+		),
 		helpers: { httpRequest },
 	};
 	return { ctx: ctx as unknown as IHookFunctions, statique, httpRequest };

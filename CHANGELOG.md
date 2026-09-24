@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.15.0 (2026-09-24)
+
+### Sirenic Trigger: a managed watch works on the API-key rail
+
+Found by the n8n verification review of 0.14.0 (a finding rated HIGH). Since 0.13.0 the
+API key is the default rail, and n8n only lets a node read the credential it displays for
+the rail chosen in Authentication. `urlBase()` still read the wallet credential for a
+managed watch, whatever the rail. On the API-key rail every free call of a managed watch
+therefore failed with "Credentials not found": reading the watch back (re-activation,
+polling), stopping it (a changed target list, deactivation with Stop the Watch) and
+fetching the key that verifies webhook signatures. Creating the watch went through, so a
+watch could be paid for and never deliver an event. Affected: 0.13.0 and 0.14.0. The
+wallet rail and watches created elsewhere were not affected.
+
+The trigger now reads a credential in one place only, `identifiantDuRail()`, which picks
+the credential of the chosen rail. The caller, the spending caps and the base URL all
+come from it, so the rail that pays and the server that is read can no longer diverge.
+
+The tests missed it because their n8n stub returned the wallet for any credential name.
+`tests/helpers/identifiants.ts` now answers as n8n does (the rule of `_getCredentials` in
+n8n-core 2.16.1, evaluated by n8n's own `NodeHelpers.displayParameter`), and
+`tests/trigger-rails.test.ts` plays a managed watch on both rails with only that rail's
+credential configured: re-activation, replacement, deactivation, polling with renewal and
+a signed webhook delivery. On 0.14.0 the five API-key cases fail; all twelve pass now.
+
+### Texts: both rails, and no em dash
+
+- README: the introduction no longer says "no API key, no account"; it describes both
+  rails. A single paid call costs $0.002 to $1.00 (it said $2.00), the default Max Amount
+  Per Call is $1.00 (the caps table said $0.20), Dry Run is described rail by rail, and
+  the ready-made workflows (six in `templates/`, twelve at api.sirenic.eu/workflows) are
+  said to run on the API-key rail with native nodes.
+- Node description: "paid per call with an API key or an x402 wallet" instead of "no API
+  key". The texts that tell you to raise Max Amount Per Call now say it is a setting of
+  the wallet rail.
+- Em dashes removed from every text n8n displays, from the error messages, from the
+  README and from the npm description.
+
+No operation, parameter value or price changed: 61 operations, same two payment rails.
+
 ## 0.14.0 — 2026-09-23
 
 ### Code comments in English — the one finding of the 0.13.0 review

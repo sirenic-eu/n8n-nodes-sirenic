@@ -120,7 +120,7 @@ const PROPERTIES: INodeProperties[] = [
 				description: 'A key created at api.sirenic.eu/compte, charged against prepaid credits. No wallet, no crypto.',
 			},
 			{
-				name: 'Wallet — USDC on Base',
+				name: 'Wallet (USDC on Base)',
 				value: 'x402',
 				// "x402" is written in lower case: it is a protocol name. The label
 				// casing rule turned it into "X402", hence a label without the word
@@ -308,7 +308,7 @@ export class Sirenic implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Official French and European company data, paid per call — no API key',
+		description: 'Official French and European company data, paid per call with an API key or an x402 wallet',
 		defaults: { name: 'Sirenic' },
 		// An AI agent asked to vet a supplier should be able to reach this
 		// directly; the spending caps in the credential are what make that safe.

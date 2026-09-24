@@ -141,7 +141,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Verify European Supplier',
 				action: 'Verify a European supplier before payment',
 				description:
-					'Verify a European supplier before payment, by country and national identifier: registry identity, VAT checked against VIES, Peppol reachability for Belgium (B2B mandate live since 1 January 2026) and, in Poland, whether the IBAN is declared by that taxpayer in the official White List — paying more than 15,000 PLN into an undeclared account costs the buyer the VAT deduction and creates joint liability for the VAT. Same deterministic verdict, closed-list reasons. ($0.03).',
+					'Verify a European supplier before payment, by country and national identifier: registry identity, VAT checked against VIES, Peppol reachability for Belgium (B2B mandate live since 1 January 2026) and, in Poland, whether the IBAN is declared by that taxpayer in the official White List (paying more than 15,000 PLN into an undeclared account costs the buyer the VAT deduction and creates joint liability for the VAT). Same deterministic verdict, closed-list reasons. ($0.03).',
 				path: (p) =>
 					`/v1/eu/facturation/dossier?pays=${enc(p('country'))}&id=${enc(p('companyId'))}${p('iban') ? `&iban=${enc(p('iban'))}` : ''}`,
 				fields: [
@@ -151,7 +151,7 @@ export const RESOURCES: Resource[] = [
 						type: 'options',
 						default: 'BE',
 						description:
-							'Country covered by this verification pack. Belgium and Poland only — the other registers do not expose what an invoicing check needs.',
+							'Country covered by this verification pack. Belgium and Poland only: the other registers do not expose what an invoicing check needs.',
 						options: [
 							{ name: 'Belgium', value: 'BE' },
 							{ name: 'Poland', value: 'PL' },
@@ -164,7 +164,7 @@ export const RESOURCES: Resource[] = [
 						required: true,
 						placeholder: '0403170701',
 						description:
-							'Belgium: the ten-digit enterprise number. Poland: the NIP (ten-digit tax number) — NOT the KRS, which would silently produce a wrong blocking verdict because VAT and the White List are keyed on the NIP.',
+							'Belgium: the ten-digit enterprise number. Poland: the NIP (ten-digit tax number), NOT the KRS, which would silently produce a wrong blocking verdict because VAT and the White List are keyed on the NIP.',
 					},
 					{
 						name: 'iban',
@@ -182,7 +182,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Prepare E-Invoicing',
 				action: 'Prepare e invoicing data for a company',
 				description:
-					'Preparation data for the French e-invoicing mandate of 1 September 2026 (reception obligatory for every company; issuance phased, large and mid-size companies from 2026, SMEs from 1 September 2027): identity, computed intra-EU VAT number, establishments, indicative obligation dates. Preparation only — Sirenic is not an accredited platform (PDP), never accesses the central directory and never issues or routes invoices. ($0.02).',
+					'Preparation data for the French e-invoicing mandate of 1 September 2026 (reception obligatory for every company; issuance phased, large and mid-size companies from 2026, SMEs from 1 September 2027): identity, computed intra-EU VAT number, establishments, indicative obligation dates. Preparation only: Sirenic is not an accredited platform (PDP), never accesses the central directory and never issues or routes invoices. ($0.02).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/facturation-prep`,
 				fields: [SIREN],
 			},
@@ -191,7 +191,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Verify VAT Number',
 				action: 'Verify an EU VAT number before invoicing',
 				description:
-					'Check an intra-EU VAT number against the official VIES service — the tax half of verifying a supplier before payment, and a required check under the French e-invoicing mandate of 1 September 2026. Valid, invalid or unavailable, with the VIES consultation identifier as proof. ($0.003).',
+					'Check an intra-EU VAT number against the official VIES service: the tax half of verifying a supplier before payment, and a required check under the French e-invoicing mandate of 1 September 2026. Valid, invalid or unavailable, with the VIES consultation identifier as proof. ($0.003).',
 				// Normalised before sending: the API validates the raw path segment,
 				// so a number typed "FR 27 552032534" would arrive as %20 and 400.
 				path: (p) => `/v1/tva/verifier/${enc(p('vatNumber').replace(/[\s.-]/g, '').toUpperCase())}`,
@@ -212,12 +212,12 @@ export const RESOURCES: Resource[] = [
 				name: 'Verify IBAN',
 				action: 'Check an IBAN and identify the bank before payment',
 				description:
-					'IBAN check against official registries, to verify a supplier before payment: ISO 13616 and mod-97 structure check, then bank identification from official sources. Explicitly NOT a payee verification — the account holder name is never checked. ($0.005).',
+					'IBAN check against official registries, to verify a supplier before payment: ISO 13616 and mod-97 structure check, then bank identification from official sources. Explicitly NOT a payee verification: the account holder name is never checked. ($0.005).',
 				// Same normalisation: IBANs are usually copied in groups of four.
 				path: (p) => {
 					const iban = p('iban').replace(/[\s.-]/g, '').toUpperCase();
 					if (!iban) {
-						throw new Error('Verify IBAN needs an IBAN — the field is optional on the verification packs, but required here.');
+						throw new Error('Verify IBAN needs an IBAN: the field is optional on the verification packs, but required here.');
 					}
 					return `/v1/iban/verifier/${enc(iban)}`;
 				},
@@ -282,7 +282,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Suggest Names (Free)',
 				action: 'Suggest company names for free',
 				description:
-					'FREE, no payment at all: type the start of a French company name and get up to five matches with SIREN, city, postcode, activity code and active/ceased status. Use it to turn a name into the SIREN every other operation needs. Matches the start of the registered name, then whole words; no typo tolerance and no confidence score — for those use Search ($0.002). (Free).',
+					'FREE, no payment at all: type the start of a French company name and get up to five matches with SIREN, city, postcode, activity code and active/ceased status. Use it to turn a name into the SIREN every other operation needs. Matches the start of the registered name, then whole words; no typo tolerance and no confidence score; for those, use Search ($0.002). (Free).',
 				path: (p) => `/v1/suggestions?q=${enc(p('query'))}`,
 				fields: [
 					{
@@ -335,7 +335,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Changes',
 				action: 'Get the new announcements published about a company',
 				description:
-					'New BODACC announcements published about this company since a given date: insolvency proceedings, removals from the register, sales and transfers, account filings. Poll it on a schedule to monitor a portfolio — an empty list is a normal answer, not an error. ($0.01).',
+					'New BODACC announcements published about this company since a given date: insolvency proceedings, removals from the register, sales and transfers, account filings. Poll it on a schedule to monitor a portfolio: an empty list is a normal answer, not an error. ($0.01).',
 				path: (p) => {
 					const since = p('since');
 					if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) {
@@ -363,7 +363,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Capital Structure',
 				action: 'Get the shareholders of a company',
 				description:
-					'Shareholders extracted by AI from the latest public articles of association: share capital, legal form, corporate holders named with role and percentage, natural persons counted with their percentage but never named (GDPR). From filed deeds, never a beneficial-ownership register. ($0.35).',
+					'Shareholders extracted by AI from the latest public articles of association: share capital, legal form, corporate holders named with role and percentage, natural persons counted with their percentage but never named (GDPR). From filed deeds only, never from an ownership register. ($0.35).',
 				path: (p) => `/v1/entreprise/${enc(p('siren'))}/capital`,
 				fields: [SIREN],
 			},
@@ -443,7 +443,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Search BODACC Announcements',
 				action: 'Search BODACC announcements by criteria',
 				description:
-					'The other direction: not "is THIS company in trouble" but "WHICH companies are". Search the BODACC legal gazette by family (insolvency proceedings, deregistrations, sales, incorporations, accounts filings...), date window and optionally a French department — up to 100 announcements, newest first, each with its SIREN, court and town. Built for scheduled monitoring: run it daily on your department and route what comes out. Two caveats carried by the response: announcements about SOLE TRADERS are excluded (their name is personal data) and counted, and the judgment is served STRUCTURED — its free text is removed everywhere because it names court-appointed administrators with their address. ($0.03).',
+					'The other direction: not "is THIS company in trouble" but "WHICH companies are". Search the BODACC legal gazette by family (insolvency proceedings, deregistrations, sales, incorporations, accounts filings...), date window and optionally a French department: up to 100 announcements, newest first, each with its SIREN, court and town. Built for scheduled monitoring: run it daily on your department and route what comes out. Two caveats carried by the response: announcements about SOLE TRADERS are excluded (their name is personal data) and counted, and the judgment is served STRUCTURED (its free text is removed everywhere because it names court-appointed administrators with their address). ($0.03).',
 				path: (p) =>
 					`/v1/bodacc/recherche?famille=${enc(p('famille'))}&depuis=${enc(p('depuis'))}` +
 					`${p('jusquA') ? `&jusqu_a=${enc(p('jusquA'))}` : ''}` +
@@ -524,7 +524,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get KYB File',
 				action: 'Get a full KYB file',
 				description:
-					'KYB (Know Your Business) due diligence — everything needed to onboard a supplier in one call: identity, officers, insolvency alerts, filed financials, sanctions screening, computed VAT number. ($0.15).',
+					'KYB (Know Your Business) due diligence, everything needed to onboard a supplier in one call: identity, officers, insolvency alerts, filed financials, sanctions screening, computed VAT number. ($0.15).',
 				path: (p) => `/v1/kyb/${enc(p('siren'))}`,
 				fields: [SIREN],
 			},
@@ -884,7 +884,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Association Official-Journal Notices',
 				action: 'Get the official-journal notices of an association',
 				description:
-					'Creations, changes of title, purpose or registered office, and dissolutions published in the official journal of associations (JOAFE) — the association equivalent of the commercial gazette. Carries the loaded coverage window: no notice inside it is a fact, not a gap. ($0.01).',
+					'Creations, changes of title, purpose or registered office, and dissolutions published in the official journal of associations (JOAFE), the association equivalent of the commercial gazette. Carries the loaded coverage window: no notice inside it is a fact, not a gap. ($0.01).',
 				path: (p) => `/v1/association/${enc(p('rna'))}/annonces`,
 				fields: [RNA],
 			},
@@ -1070,7 +1070,7 @@ export const RESOURCES: Resource[] = [
 						type: 'string',
 						required: true,
 						placeholder: '10868035',
-						description: 'National identifier in that register\'s own format — the path parameter of each route: ES nif (letter, seven digits, check character; DNI and NIE refused) · GB company_number (eight characters, leading zeros included) · LV regnr (eleven digits) · PL nip (ten digits) · PT nipc (nine digits with check digit).',
+						description: 'National identifier in that register\'s own format (the path parameter of each route): ES nif (letter, seven digits, check character; DNI and NIE refused) · GB company_number (eight characters, leading zeros included) · LV regnr (eleven digits) · PL nip (ten digits) · PT nipc (nine digits with check digit).',
 					},
 				],
 				notFoundIsEmpty: true,
@@ -1144,7 +1144,7 @@ export const RESOURCES: Resource[] = [
 						type: 'options',
 						default: '',
 						description:
-							'Restrict the search to one national register. Leave empty to search the pre-loaded registers plus worldwide LEI — but note that Czechia, Switzerland, Denmark, Finland, Poland, Slovakia and the United Kingdom are queried LIVE and are only searched by name when their country is selected here.',
+							'Restrict the search to one national register. Leave empty to search the pre-loaded registers plus worldwide LEI. Note that Czechia, Switzerland, Denmark, Finland, Poland, Slovakia and the United Kingdom are queried LIVE and are only searched by name when their country is selected here.',
 						options: [
 							{ name: 'All (Pre-Loaded Registers + LEI)', value: '' },
 							{ name: 'Belgium', value: 'BE' },
@@ -1186,7 +1186,7 @@ export const RESOURCES: Resource[] = [
 				name: 'List Annual Filings',
 				action: 'List the annual account filings',
 				description:
-					'Published annual accounts for a European company. Belgium and Finland return the list of filings to fetch one by one; Norway, Latvia, Estonia and Sweden return the figures directly; Denmark, Slovakia and the United Kingdom return the available financial years. Czechia, Poland and Switzerland are NOT covered by this route. Price depends on the country: $0.01 (BE, FI, DK, SK, GB), $0.02 (EE, NO), $0.03 (LV, SE) — set Max Amount Per Call to at least $0.03.',
+					'Published annual accounts for a European company. Belgium and Finland return the list of filings to fetch one by one; Norway, Latvia, Estonia and Sweden return the figures directly; Denmark, Slovakia and the United Kingdom return the available financial years. Czechia, Poland and Switzerland are NOT covered by this route. Price depends on the country: $0.01 (BE, FI, DK, SK, GB), $0.02 (EE, NO), $0.03 (LV, SE); on the wallet rail, set Max Amount Per Call to at least $0.03.',
 				path: (p) => {
 					const servis = ['BE', 'DK', 'EE', 'FI', 'LV', 'NO', 'SE', 'SK', 'GB'];
 					if (!servis.includes(p('country'))) {
@@ -1211,7 +1211,7 @@ export const RESOURCES: Resource[] = [
 					const servis = ['BE', 'DK', 'FI', 'SK', 'GB'];
 					if (!servis.includes(p('country'))) {
 						throw new Error(
-							`${p('country')} does not serve filings one by one. Countries covered: ${servis.join(', ')} — for the others, List Annual Filings already returns the figures.`,
+							`${p('country')} does not serve filings one by one. Countries covered: ${servis.join(', ')}. For the others, List Annual Filings already returns the figures.`,
 						);
 					}
 					return `/v1/eu/entreprise/${enc(p('country'))}/${enc(p('companyId'))}/comptes/${enc(p('filingReference'))}`;
@@ -1225,7 +1225,7 @@ export const RESOURCES: Resource[] = [
 						type: 'string',
 						required: true,
 						description:
-							'Reference returned by List Annual Filings — a filing reference for Belgium, Finland and Slovakia, a closing date (YYYY-MM-DD) for Denmark and the United Kingdom.',
+							'Reference returned by List Annual Filings: a filing reference for Belgium, Finland and Slovakia, a closing date (YYYY-MM-DD) for Denmark and the United Kingdom.',
 					},
 				],
 			},
@@ -1331,7 +1331,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Registry Events',
 				action: 'Get company registry events',
 				description:
-					'Company legal and registry events from each country\'s official register — insolvency, liquidation, mergers, strike-off, statutory entries — for Croatia, Estonia, Finland, Latvia, Norway, Poland, Sweden and Switzerland; coverage window and event vocabulary differ by register. ($0.02).',
+					'Company legal and registry events from each country\'s official register (insolvency, liquidation, mergers, strike-off, statutory entries) for Croatia, Estonia, Finland, Latvia, Norway, Poland, Sweden and Switzerland; coverage window and event vocabulary differ by register. ($0.02).',
 				path: (p) => `/v1/eu/entreprise/${enc(p('country'))}/${enc(p('companyId'))}/evenements`,
 				fields: [
 					{
@@ -1519,7 +1519,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get UK Insolvency Notices',
 				action: 'Get uk insolvency notices',
 				description:
-					'United Kingdom only: company insolvency notices from The Gazette, the official journal, newest first — winding-up resolutions and petitions, liquidator and administrator appointments, creditors\' notices and dividends, each with its official notice code, type, date and link. ($0.02).',
+					'United Kingdom only: company insolvency notices from The Gazette, the official journal, newest first (winding-up resolutions and petitions, liquidator and administrator appointments, creditors\' notices and dividends), each with its official notice code, type, date and link. ($0.02).',
 				path: (p) => `/v1/eu/entreprise/GB/${enc(p('company_number'))}/annonces`,
 				fields: [
 					{
@@ -1549,7 +1549,7 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Spanish Registry Acts',
 				action: 'Get spanish registry acts',
 				description:
-					'Spain only: company acts published in the BORME gazette (Registro Mercantil, section A) for one hoja registral, newest first — incorporations, officer appointments and dismissals, capital changes, mergers, dissolutions and insolvency, 100 acts maximum with the total count. ($0.02).',
+					'Spain only: company acts published in the BORME gazette (Registro Mercantil, section A) for one hoja registral, newest first (incorporations, officer appointments and dismissals, capital changes, mergers, dissolutions and insolvency), 100 acts maximum with the total count. ($0.02).',
 				path: (p) => `/v1/eu/entreprise/ES/${enc(p('hoja'))}/actes`,
 				fields: [
 					{

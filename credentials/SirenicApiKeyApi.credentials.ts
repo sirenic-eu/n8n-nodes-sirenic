@@ -86,7 +86,7 @@ export class SirenicApiKeyApi implements ICredentialType {
 			required: true,
 			typeOptions: { minValue: 0, numberPrecision: 3 },
 			description:
-				'Ceiling across every item of one execution, counted from what the API reports it charged. Set it to 0 to allow an uncapped execution — only do that when something else bounds the number of items.',
+				'Ceiling across every item of one execution, counted from what the API reports it charged. Set it to 0 to allow an uncapped execution, and only do that when something else bounds the number of items.',
 		},
 		{
 			displayName: 'API Base URL',

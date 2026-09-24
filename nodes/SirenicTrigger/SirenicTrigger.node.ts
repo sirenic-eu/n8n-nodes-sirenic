@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHookFunctions,
 	INodeExecutionData,
@@ -198,7 +199,7 @@ export class SirenicTrigger implements INodeType {
 						description: 'A key created at api.sirenic.eu/compte, charged against prepaid credits. No wallet, no crypto.',
 					},
 					{
-						name: 'Wallet — USDC on Base',
+						name: 'Wallet (USDC on Base)',
 						value: 'x402',
 						// "x402" is written in lower case: it is a protocol name. The label
 						// casing rule turned it into "X402", hence a label without the word
@@ -219,7 +220,7 @@ export class SirenicTrigger implements INodeType {
 						name: 'Created and Managed by This Trigger',
 						value: 'managed',
 						description:
-							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year — raise Max Amount Per Call on the credential accordingly). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
+							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year; on the wallet rail, raise Max Amount Per Call on the credential accordingly). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
 					},
 					{
 						name: 'Already Created Elsewhere',
@@ -238,7 +239,7 @@ export class SirenicTrigger implements INodeType {
 				placeholder: '552032534,542065479',
 				displayOptions: { show: { watchSource: ['managed'] } },
 				description:
-					'One to 100 comma-separated entries: nine-digit SIRENs, or "dirigeant:Name" to follow the public mandates of a person. Changing this list after activation replaces the watch — the old one is stopped and a new one is paid for.',
+					'One to 100 comma-separated entries: nine-digit SIRENs, or "dirigeant:Name" to follow the public mandates of a person. Changing this list after activation replaces the watch: the old one is stopped and a new one is paid for.',
 			},
 			{
 				displayName: 'Duration',
@@ -267,7 +268,7 @@ export class SirenicTrigger implements INodeType {
 						name: '365 Days, $0.50 per Target (17.8% Off)',
 						value: 365,
 						description:
-							'Up to $50.00 for the maximum of 100 targets. Raise Max Amount Per Call on the credential before activating.',
+							'Up to $50.00 for the maximum of 100 targets. On the wallet rail, raise Max Amount Per Call on the credential before activating.',
 					},
 				],
 			},
@@ -289,7 +290,7 @@ export class SirenicTrigger implements INodeType {
 						name: 'Polling (This Node Asks)',
 						value: 'poll',
 						description:
-							'The watch is created with no delivery channel and this node reads it through its free read route. Works behind a firewall, and lets you test the wiring — Sirenic sends nothing when a watch is created.',
+							'The watch is created with no delivery channel and this node reads it through its free read route. Works behind a firewall, and lets you test the wiring (Sirenic sends nothing when a watch is created).',
 					},
 				],
 			},
@@ -337,7 +338,7 @@ export class SirenicTrigger implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to drop surveillance_degradee events. They report that a source was unreachable for a day, not a change at the company — useful to know, noisy to act on.',
+					'Whether to drop surveillance_degradee events. They report that a source was unreachable for a day, not a change at the company: useful to know, noisy to act on.',
 			},
 			{
 				displayName: 'API Base URL',
@@ -413,7 +414,7 @@ export class SirenicTrigger implements INodeType {
 						'Listening for a test event would create a PAID watch, so this node refuses',
 						{
 							description:
-								'Activate the workflow instead: activation creates the watch once and Sirenic then posts to the production URL. To try the wiring first, set Delivery to Polling and use an existing Watch Token — reading a watch back is free.',
+								'Activate the workflow instead: activation creates the watch once and Sirenic then posts to the production URL. To try the wiring first, set Delivery to Polling and use an existing Watch Token (reading a watch back is free).',
 						},
 					);
 				}
@@ -739,7 +740,7 @@ async function appelPaye(
 			`${quoi} failed: ${error instanceof Error ? error.message : String(error)}`,
 			{
 				description:
-					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00 — raise Max Amount Per Call on the Sirenic credential if the quote was refused, or pick a shorter Duration.',
+					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00: on the wallet rail, raise Max Amount Per Call on the Sirenic credential if the quote was refused, or pick a shorter Duration.',
 			},
 		);
 	}
@@ -750,7 +751,7 @@ async function appelPaye(
 		const detail = String(corps.message ?? code);
 		const explication =
 			code === 'webhook_invalide'
-				? 'Sirenic only calls a PUBLIC https URL on port 443 — never localhost, a private address, or a custom port. That is what a self-hosted n8n usually exposes, so set Delivery to Polling instead: the watch is then created with no webhook and this node reads it back for free.'
+				? 'Sirenic only calls a PUBLIC https URL on port 443, never localhost, a private address, or a custom port. That is what a self-hosted n8n usually exposes, so set Delivery to Polling instead: the watch is then created with no webhook and this node reads it back for free.'
 				: code === 'cibles_invalides'
 					? 'Each target must be a nine-digit SIREN with a valid check digit, or "dirigeant:Name" (2 to 80 characters), 1 to 100 of them.'
 					: 'Nothing was charged: Sirenic cancels the payment on any error.';
@@ -763,16 +764,36 @@ async function appelPaye(
 	return (resultat.body ?? {}) as IDataObject;
 }
 
-/** Wallet and spending caps, read from the credential and checked before use. */
+/**
+ * The credential of the chosen payment rail: the ONLY place in this node that
+ * reads a credential.
+ *
+ * n8n shows, and lets the node read, only the credential of the rail picked in
+ * Authentication. 0.13.0 and 0.14.0 read the wallet credential in `urlBase()`
+ * whatever the rail, so on the default API-key rail every free call of a
+ * managed watch failed: reading it back, stopping it and fetching the signing
+ * key (n8n review of 23 Sep 2026). The caller, the spending caps and the base
+ * URL now all come from here, so the rail that pays and the server that is
+ * read can no longer diverge.
+ */
+async function identifiantDuRail(
+	this: Contexte,
+): Promise<{ rail: 'apiKey' | 'x402'; credentials: ICredentialDataDecryptedObject }> {
+	const rail = this.getNodeParameter('authentication', 'apiKey') === 'x402' ? 'x402' : 'apiKey';
+	const credentials = await this.getCredentials(
+		rail === 'apiKey' ? 'sirenicApiKeyApi' : 'sirenicApi',
+	);
+	return { rail, credentials };
+}
+
 /**
  * Caller for the chosen rail. A watch is PAID FOR — by API key and prepaid
  * credits (0.13.0) or by x402 signature — and the rest of the trigger does
  * not know which of the two it holds.
  */
 async function appelant(this: IHookFunctions | IPollFunctions): Promise<AppelantSirenic> {
-	const rail = this.getNodeParameter('authentication', 'apiKey') as 'apiKey' | 'x402';
+	const { rail, credentials } = await identifiantDuRail.call(this);
 	if (rail === 'apiKey') {
-		const credentials = await this.getCredentials('sirenicApiKeyApi');
 		const apiKey = String(credentials.apiKey ?? '');
 		if (!apiKey.startsWith('srn_')) {
 			throw new NodeOperationError(
@@ -786,11 +807,14 @@ async function appelant(this: IHookFunctions | IPollFunctions): Promise<Appelant
 			maxSpendPerExecution: Number(credentials.maxSpendPerExecution ?? 0),
 		});
 	}
-	return new SirenicPayer(await reglagesPaiement.call(this));
+	return new SirenicPayer(reglagesPaiement.call(this, credentials));
 }
 
-async function reglagesPaiement(this: IHookFunctions | IPollFunctions): Promise<PaymentSettings> {
-	const credentials = await this.getCredentials('sirenicApi');
+/** Wallet and spending caps, read from the wallet credential and checked before use. */
+function reglagesPaiement(
+	this: IHookFunctions | IPollFunctions,
+	credentials: ICredentialDataDecryptedObject,
+): PaymentSettings {
 	const reglages: PaymentSettings = {
 		privateKey: String(credentials.privateKey ?? ''),
 		baseUrl: String(credentials.baseUrl ?? BASE_URL_DEFAUT),
@@ -931,16 +955,16 @@ function statutDe(error: unknown): number | undefined {
 
 /** Base URL without its trailing slash. */
 async function urlBase(this: Contexte): Promise<string> {
-	// A managed watch is paid for through the credential, so the credential is
-	// also where its address comes from: a node parameter pointing elsewhere
-	// would read one server and pay another.
-	if (sourceSurveillance.call(this) === 'managed') {
-		const credentials = await this.getCredentials('sirenicApi');
-		const brut = String(credentials.baseUrl ?? BASE_URL_DEFAUT).trim();
-		return (brut || BASE_URL_DEFAUT).replace(/\/+$/, '');
-	}
-	const brut = String(this.getNodeParameter('baseUrl', BASE_URL_DEFAUT) ?? '').trim();
-	return (brut || BASE_URL_DEFAUT).replace(/\/+$/, '');
+	// A managed watch is paid for through the credential of its rail, so that
+	// credential is also where its address comes from: a node parameter, or the
+	// credential of the other rail, pointing elsewhere would read one server and
+	// pay another.
+	const brut =
+		sourceSurveillance.call(this) === 'managed'
+			? (await identifiantDuRail.call(this)).credentials.baseUrl
+			: this.getNodeParameter('baseUrl', BASE_URL_DEFAUT);
+	const texte = String(brut ?? BASE_URL_DEFAUT).trim();
+	return (texte || BASE_URL_DEFAUT).replace(/\/+$/, '');
 }
 
 /* -------------------------------------------------------------------------- */

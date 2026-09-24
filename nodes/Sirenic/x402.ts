@@ -137,7 +137,7 @@ export function checkQuote(
 	}
 	if (usdc.payTo.toLowerCase() !== settings.payTo.toLowerCase()) {
 		throw new Error(
-			`Payment address mismatch: the quote asks to pay ${usdc.payTo}, but the credential expects ${settings.payTo}. Refusing to sign — check the API Base URL.`,
+			`Payment address mismatch: the quote asks to pay ${usdc.payTo}, but the credential expects ${settings.payTo}. Refusing to sign: check the API Base URL.`,
 		);
 	}
 
