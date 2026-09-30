@@ -78,6 +78,10 @@ Two limits, carried by the responses themselves and worth repeating here:
 The pieces are also sold on their own: *Prepare E-Invoicing* ($0.02), *Verify IBAN* ($0.005),
 *Verify VAT Number* ($0.003).
 
+The same check, what it catches and what it cannot catch:
+[verify a supplier before payment](https://api.sirenic.eu/en/use-cases/verify-supplier-before-payment-identity-vat-iban)
+and [get your supplier master data ready for French e-invoicing](https://api.sirenic.eu/en/use-cases/french-e-invoicing-get-your-supplier-master-data-ready).
+
 ## What else you can do
 
 | Operation | What it answers | Price |
@@ -155,6 +159,8 @@ channel and the node reads its events back for free.
 
 Detection runs **daily**, aligned on how often the official sources publish: the BODACC
 issues one edition a day. Nobody can honestly offer real time on registry data.
+What a watch reports and what it cannot see:
+[monitor a customer portfolio with daily alerts](https://api.sirenic.eu/en/use-cases/monitor-customer-portfolio-daily-alerts-signed-webhook).
 
 ## Setup
 
@@ -260,6 +266,8 @@ Requires n8n with Node.js ≥ 22.22. No runtime dependencies: everything is bund
 ## Resources
 
 - API documentation: <https://api.sirenic.eu>
+- Use cases, step by step: <https://api.sirenic.eu/en/use-cases>
+- About the service and how every answer describes itself: <https://api.sirenic.eu/en/about>
 - Machine-readable tool list: <https://api.sirenic.eu/llms.txt>
 - x402 protocol: <https://x402.org>
 
