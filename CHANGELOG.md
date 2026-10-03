@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.16.0 (2026-10-03)
 
 ### Dry Run states the price on the API-key rail
 
