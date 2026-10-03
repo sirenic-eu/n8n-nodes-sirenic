@@ -69,7 +69,7 @@ describe('API key rail', () => {
 		expect((r.body as { free_quota_remaining?: number }).free_quota_remaining).toBe(149);
 	});
 
-	it('refuses BEFORE the call that would cross the cap', async () => {
+	it('charges the call that crosses the cap, and refuses the next one before sending it', async () => {
 		const fetchStub = vi.fn(async () => reponse({ ok: true }, { 'x-credits-charged': '0.4' }));
 		vi.stubGlobal('fetch', fetchStub);
 		const a = appelant(1);

@@ -176,7 +176,7 @@ Same routes, same prices, same responses. Only the payment header differs.
 | How you pay | Prepaid credits, in euros | A USDC payment signed per call |
 | Account | Yes | None at all |
 | Free tier | 150 calls a month on routes at $0.05 or less | None |
-| Ceiling | Counts what the API reports it charged, stops before crossing | Refuses a quote above the cap, before signing |
+| Ceiling | Counts what the API reports it charged: the call that crosses the ceiling is charged, the next one is refused | Refuses a quote above the cap, before signing |
 
 **Which one?** If you are a finance, CRM or procurement team, take the API key:
 there is nothing to fund and nothing to sign. The wallet exists for agents and for

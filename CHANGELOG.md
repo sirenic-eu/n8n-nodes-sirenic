@@ -13,11 +13,13 @@ not affected.
 Dry Run now reads the quote the API returns for the exact call and reports its price in
 `would_pay_usd` on both rails: the amount of the quote's USDC option on Base. The API-key
 rail debits the same number in credits (1 credit = 1 euro), or nothing when the monthly
-free quota covers the call, and the dry run still does not send the key. When the quote
-cannot be read, `would_pay_usd` is `null` and `price_unavailable_reason` says why, from a
-closed list (`no_quote_header`, `unreadable_quote`, `unsupported_x402_version`,
-`no_usdc_on_base_option`). The node never falls back on a price written anywhere else,
-such as the prose of the 402 body. The `quote` field of the old output is gone.
+free quota covers the call, and the dry run still does not send the key. On the API-key
+rail, when the quote cannot be read, `would_pay_usd` is `null` and
+`price_unavailable_reason` says why, from a closed list (`no_quote_header`,
+`unreadable_quote`, `unsupported_x402_version`, `no_usdc_on_base_option`); on the wallet
+rail, a dry run fails with the refusal a payment would get (unreadable quote, quote above
+a cap). The node never falls back on a price written anywhere else, such as the prose of
+the 402 body. The `quote` field of the old output is gone.
 
 A dry run on the API-key rail that gets an answer other than a quote now behaves as on the
 wallet rail: a free route returns its data, and an error (a rate limit, a server error)
@@ -43,8 +45,9 @@ the wallet rail this changes three things, all at the edges of what a quote may 
 `tests/dry-run.test.ts` plays Dry Run through the whole node on both rails, with only the
 chosen rail's credential configured and a quote shaped like the one api.sirenic.eu serves
 (its EURC option listed first, at another amount), plus malformed headers and amounts and
-error answers. On 0.15.0 the API-key cases fail. `tests/call-paths.test.ts` covers the
-wallet refusals above, none of which signs anything.
+error answers. 14 of the 15 API-key cases fail on 0.15.0 (the 15th, a free route
+returning its data, already passed). `tests/call-paths.test.ts` covers the wallet refusals
+above, none of which signs anything.
 
 Texts: the Dry Run option says it returns the price in `would_pay_usd` on either rail, and
 the README describes Dry Run in one sentence for both rails.
@@ -59,9 +62,10 @@ credential labelled its ceiling "Max Spend Per Execution (USD)": 0.50 read as do
 Affected: 0.13.0 to 0.15.0. The wallet rail was not affected: it pays dollars, in USDC.
 
 Nothing is renamed, so workflows that read `paid_usd` or `execution_total_usd` keep
-working. A new field, `_sirenic.unit`, names the unit of both amounts in every `_sirenic`
-block: `usd` on the wallet rail, `credits_eur` on the API-key rail. Each caller declares
-the unit it counts in and the node copies it, so the unit comes from the code that counts.
+working. A new field, `_sirenic.unit`, names the unit of both amounts on every item of the
+Sirenic node that carries them: `usd` on the wallet rail, `credits_eur` on the API-key
+rail. Each caller declares the unit it counts in and the node copies it, so the unit comes
+from the code that counts.
 
 The API-key credential now labels its ceiling "Max Spend Per Execution (credits, 1 credit
 = 1 euro)". Its internal name, `maxSpendPerExecution`, and its default (5) do not change,

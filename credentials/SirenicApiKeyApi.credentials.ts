@@ -73,11 +73,11 @@ export class SirenicApiKeyApi implements ICredentialType {
 		},
 		{
 			/**
-			 * A ceiling still matters on this rail. It cannot refuse a quote — there
-			 * is none — so it counts what the API says it charged (`x-credits-charged`,
-			 * one header per response) and stops before the call that would cross the
-			 * line. That is what stands between a loop over 10 000 rows and an empty
-			 * balance.
+			 * A ceiling still matters on this rail. It cannot refuse a quote, since this
+			 * rail gets none, so it counts what the API says it charged
+			 * (`x-credits-charged`, one header per response): the call that crosses the
+			 * ceiling is charged, and the next one is refused before it is sent. That is
+			 * what stands between a loop over 10 000 rows and an empty balance.
 			 *
 			 * It counts credits, 1 credit = 1 euro, and says so: up to 0.15.0 it was
 			 * labelled "(USD)", so a ceiling read as 5 dollars was 5 euros. Only the
