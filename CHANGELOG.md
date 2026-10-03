@@ -49,6 +49,30 @@ wallet refusals above, none of which signs anything.
 Texts: the Dry Run option says it returns the price in `would_pay_usd` on either rail, and
 the README describes Dry Run in one sentence for both rails.
 
+### Every item says in which unit it reports what it cost
+
+On the API-key rail the API debits credits, 1 credit = 1 euro: the same number as the
+dollar price of the route. Up to 0.15.0 the node reported those credits under
+`_sirenic.paid_usd` and `_sirenic.execution_total_usd` with nothing to say so, and the
+credential labelled its ceiling "Max Spend Per Execution (USD)": 0.50 read as dollars was
+0.50 euro, and a ceiling of "5 USD" was a ceiling of 5 credits. Same number, wrong unit.
+Affected: 0.13.0 to 0.15.0. The wallet rail was not affected: it pays dollars, in USDC.
+
+Nothing is renamed, so workflows that read `paid_usd` or `execution_total_usd` keep
+working. A new field, `_sirenic.unit`, names the unit of both amounts in every `_sirenic`
+block: `usd` on the wallet rail, `credits_eur` on the API-key rail. Each caller declares
+the unit it counts in and the node copies it, so the unit comes from the code that counts.
+
+The API-key credential now labels its ceiling "Max Spend Per Execution (credits, 1 credit
+= 1 euro)". Its internal name, `maxSpendPerExecution`, and its default (5) do not change,
+so every saved credential keeps its value. The error raised when the ceiling is reached
+counts credits instead of USD. The README says what `_sirenic.unit` holds and that this
+ceiling counts credits.
+
+`tests/amount-unit.test.ts` plays the whole node on both rails (paid calls, a dry run, a
+free route) and checks the label and the ceiling error of the API-key rail. Its 6 cases
+fail on 0.15.0.
+
 No operation, parameter value or price changed.
 
 ## 0.15.0 (2026-09-24)

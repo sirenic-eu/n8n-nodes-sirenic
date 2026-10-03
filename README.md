@@ -212,9 +212,14 @@ funds:
 | **Max Amount Per Execution** | $5.00 | Ceiling across every item of one execution, your protection against a loop over 10 000 rows |
 | **Expected Payment Address** | Sirenic's address | The node refuses to pay anyone else, so a spoofed endpoint cannot redirect funds |
 
-On the API-key rail, **Max Spend Per Execution** (default $5.00) adds up what the API
-reports it charged and stops before the next call once the ceiling is reached; 0 means no
-ceiling.
+On the API-key rail, **Max Spend Per Execution** counts credits (1 credit = 1 euro,
+default 5): it adds up what the API reports it charged and stops before the next call once
+the ceiling is reached; 0 means no ceiling.
+
+Every item the node returns says what it cost in `_sirenic`: `paid_usd` for the call and
+`execution_total_usd` for the execution so far, in the unit given by `_sirenic.unit`. That
+unit is `usd` on the wallet rail, and `credits_eur` on the API-key rail, which debits in
+credits the same number as the dollar price (1 credit = 1 euro).
 
 On either rail, turn on **Dry Run** in Options to see what a call would cost without
 paying for it.

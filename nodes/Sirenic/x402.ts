@@ -53,10 +53,23 @@ const MARGE_REGLEMENT_MS = 30_000;
  * what allows adding a rail without touching the 61 operations.
  */
 export interface AppelantSirenic {
-	/** Total spent so far in this execution, in dollars. */
+	/** Unit of `totalPaid` and of every `CallResult.paid` this caller returns. */
+	readonly unit: PaymentUnit;
+	/** Total spent so far in this execution, in `unit`. */
 	readonly totalPaid: number;
 	call(path: string, timeoutMs: number, dryRun: boolean): Promise<CallResult>;
 }
+
+/**
+ * What a caller counts in. The wallet pays dollars, in USDC. The API key debits
+ * credits, 1 credit = 1 euro: the same NUMBER as the dollar price of the route,
+ * in another unit. The node reports both under `paid_usd` and
+ * `execution_total_usd`, names older than the API-key rail and kept so that the
+ * workflows reading them keep working, and says which unit they hold in
+ * `_sirenic.unit`. Declared by each caller rather than inferred from the rail
+ * chosen in the node, so that the unit always comes from the code that counts.
+ */
+export type PaymentUnit = 'usd' | 'credits_eur';
 
 export interface PaymentSettings {
 	privateKey: string;
@@ -69,7 +82,7 @@ export interface PaymentSettings {
 export interface CallResult {
 	status: number;
 	body: unknown;
-	/** What was actually paid, in USD. Zero for a free endpoint. */
+	/** What was actually paid, in the caller's `unit`. Zero for a free endpoint. */
 	paid: number;
 	/**
 	 * Set when the 402 is the answer to a dry run, not a failure: the quote was
@@ -334,6 +347,9 @@ export function buildPaymentPayload(
  * enforced across every item the node processes.
  */
 export class SirenicPayer implements AppelantSirenic {
+	/** The wallet signs USDC payments: it counts dollars. */
+	readonly unit: PaymentUnit = 'usd';
+
 	private spent = 0n;
 
 	constructor(private readonly settings: PaymentSettings) {}

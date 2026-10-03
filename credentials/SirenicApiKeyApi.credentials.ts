@@ -78,15 +78,19 @@ export class SirenicApiKeyApi implements ICredentialType {
 			 * one header per response) and stops before the call that would cross the
 			 * line. That is what stands between a loop over 10 000 rows and an empty
 			 * balance.
+			 *
+			 * It counts credits, 1 credit = 1 euro, and says so: up to 0.15.0 it was
+			 * labelled "(USD)", so a ceiling read as 5 dollars was 5 euros. Only the
+			 * label changed; the internal name, and so every saved credential, stays.
 			 */
-			displayName: 'Max Spend Per Execution (USD)',
+			displayName: 'Max Spend Per Execution (credits, 1 credit = 1 euro)',
 			name: 'maxSpendPerExecution',
 			type: 'number',
 			default: 5,
 			required: true,
 			typeOptions: { minValue: 0, numberPrecision: 3 },
 			description:
-				'Ceiling across every item of one execution, counted from what the API reports it charged. Set it to 0 to allow an uncapped execution, and only do that when something else bounds the number of items.',
+				'Ceiling across every item of one execution, in credits, counted from what the API reports it charged. Set it to 0 to allow an uncapped execution, and only do that when something else bounds the number of items.',
 		},
 		{
 			displayName: 'API Base URL',

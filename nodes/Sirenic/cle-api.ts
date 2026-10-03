@@ -9,12 +9,18 @@
  * so the 61 operations, the node and the trigger never know which of the two
  * rails they hold.
  */
-import { quotedPriceUsd, readBody, type AppelantSirenic, type CallResult } from './x402';
+import {
+	quotedPriceUsd,
+	readBody,
+	type AppelantSirenic,
+	type CallResult,
+	type PaymentUnit,
+} from './x402';
 
 export interface KeySettings {
 	apiKey: string;
 	baseUrl: string;
-	/** Spending cap for ONE execution, in dollars. 0 = no cap. */
+	/** Spending cap for ONE execution, in credits (1 credit = 1 euro). 0 = no cap. */
 	maxSpendPerExecution: number;
 }
 
@@ -25,6 +31,14 @@ const ENTETE_DEBIT = 'x-credits-charged';
 const ENTETE_QUOTA = 'x-free-quota-remaining';
 
 export class SirenicKeyCaller implements AppelantSirenic {
+	/**
+	 * The API debits credits, 1 credit = 1 euro, and reports them in
+	 * `x-credits-charged`: what this rail counts is credits, never dollars, even
+	 * though the number equals the dollar price of the route. Up to 0.15.0 the
+	 * node reported them under `_usd` names with nothing to say so.
+	 */
+	readonly unit: PaymentUnit = 'credits_eur';
+
 	private depense = 0;
 
 	constructor(private readonly settings: KeySettings) {}
@@ -47,7 +61,7 @@ export class SirenicKeyCaller implements AppelantSirenic {
 		const plafond = this.settings.maxSpendPerExecution;
 		if (plafond > 0 && this.depense >= plafond) {
 			throw new Error(
-				`Spending ceiling reached: ${this.totalPaid} USD charged in this execution, limit ${plafond} USD. ` +
+				`Spending ceiling reached: ${this.totalPaid} credits charged in this execution, limit ${plafond} credits (1 credit = 1 euro). ` +
 					'Raise "Max Spend Per Execution" on the Sirenic API Key credential, or send fewer items.',
 			);
 		}

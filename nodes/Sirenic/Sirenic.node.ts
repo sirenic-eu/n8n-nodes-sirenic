@@ -428,6 +428,11 @@ export class Sirenic implements INodeType {
 							status: result.status,
 							paid_usd: result.paid,
 							execution_total_usd: payer.totalPaid,
+							// The two amounts above are in this unit: `usd` on the wallet rail,
+							// `credits_eur` on the API-key rail (1 credit = 1 euro, the same
+							// number as the dollar price). Their names are kept for the
+							// workflows that already read them.
+							unit: payer.unit,
 						},
 					},
 					pairedItem: { item: i },
