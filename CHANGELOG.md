@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.17.0 (2026-10-04)
+
+### The API-key ceiling refuses the call that would cross it, before the key is sent
+
+Since 0.13.0, on the API-key rail, Max Spend Per Execution added up what the API reported
+it charged and refused the next call: the call that crossed the ceiling was sent and
+charged. Under the default ceiling of 5, a call charged 10.5 went through; under a ceiling
+of 1, calls of 0.4 ended at 1.2. The Sirenic Trigger never applied the ceiling at all: it
+built a new caller, starting at zero, for each paid call, so a watch of 100 targets for a
+year (50 credits) went through a ceiling of 5. Affected: 0.13.0 to 0.16.0. The wallet rail
+was not affected: it refuses a quote above its caps before signing.
+
+With a ceiling above 0, the node now asks the API for the quote of each paid call without
+the key, the free request Dry Run makes, read by the same code (`quotedPriceUsd`), and
+refuses the call when the credits already charged in the execution plus that quote would
+exceed the ceiling. A total of exactly the ceiling passes, as on the wallet rail. A
+refused call is never sent with the key, so nothing is charged, and the error states the
+quote, the total it would reach and the ceiling, in credits. A quote that cannot be read
+is refused too, with the reason Dry Run gives in `price_unavailable_reason`: a ceiling
+cannot bound what it cannot price.
+
+Amounts are counted in whole thousandths of a credit, the unit the API debits in. The
+quote is rounded up as the API rounds its debit, and a total of exactly the ceiling
+compares as equal whatever its decimals (0.1 + 0.2 + 0.7 is 1). An `x-credits-charged`
+header that is negative, not a number or infinite still counts 0, now under test.
+
+The Sirenic Trigger builds one caller per execution (an activation, a poll that renews)
+and pays through it, so a watch or a renewal quoted above the ceiling is refused before
+anything is sent. With the default ceiling of 5, a watch of 100 targets for 90 days (13.5
+credits) or for a year (50 credits) now needs the ceiling raised first, as the wallet rail
+already needs Max Amount Per Call raised. The texts of the trigger say which setting to
+raise on each rail.
+
+What it costs: one more request per paid call, unbilled. Measured on 4 Oct 2026 from a
+server in France on three routes, it took a median of 19.5 to 22.7 ms on a reused
+connection. A ceiling of 0 asks for no quote, and a free route costs no extra request.
+Any answer to the quote request that is not a quote is the result, as on the wallet rail:
+a free route returns its data, and an error (a rate limit, a server error) fails the call
+like any call, with nothing charged. The quote request carries no key, so the API counts
+it against its per-IP rate limit, not the per-key one. The quote counts even when the
+monthly free quota would cover the call, so such a call can be refused at the edge of the
+ceiling.
+
+`tests/plafond-cle.test.ts` plays the ceiling against a simulated API that quotes without
+the key and serves with it: the caller alone, the whole node (with and without Continue
+On Fail) and the trigger (activation and renewal), plus the edges (a total of exactly the
+ceiling, rounding, malformed debits, unreadable quotes, a ceiling of 0, a free route, an
+error on the quote request). 17 of its 28 cases fail on 0.16.0; the other 11 pin what
+0.16.0 already did right (a ceiling of 0, malformed debits, a total of exactly the
+ceiling, one caller per execution). The tests whose stub answered a paid route with 200
+without a key, which the API never does, now get a quote without the key.
+
+### A USDC option without a payment address is refused, not a TypeError
+
+On the wallet rail, a quote whose USDC option on Base had no `payTo`, or a `payTo` that
+was not text, made the node throw a TypeError (`Cannot read properties of undefined
+(reading 'toLowerCase')` when it was missing). Nothing was signed, but the error said
+nothing a user could act on. Such an option now gets the refusal any other address gets ("Payment address
+mismatch"), before anything is signed. Affected: every version since 0.3.1.
+
+### Texts
+
+- README: the ceiling of the API-key rail is described as it now works, in the table of
+  the two rails and under the spending caps, followed by one sentence for both rails. "Every
+  item the node returns" now reads "every item of the Sirenic node that carries them": an
+  error item kept by Continue On Fail carries no `_sirenic`. The trigger section says
+  which ceiling to raise on each rail.
+- The API-key credential describes the check against the quote.
+
+No operation, parameter value or price changed.
+
 ## 0.16.0 (2026-10-03)
 
 ### Dry Run states the price on the API-key rail
