@@ -175,9 +175,13 @@ export function checkQuote(
 			`No USDC-on-Base option in the payment quote. Sirenic only settles USDC on Base (${NETWORK}); refusing to pay.`,
 		);
 	}
-	if (usdc.payTo.toLowerCase() !== settings.payTo.toLowerCase()) {
+	// The quote is untrusted JSON: an address that is missing or not text gets
+	// the same refusal as a wrong one. Up to 0.16.0 it made `toLowerCase()`
+	// throw a TypeError instead.
+	const adresse: unknown = usdc.payTo;
+	if (typeof adresse !== 'string' || adresse.toLowerCase() !== settings.payTo.toLowerCase()) {
 		throw new Error(
-			`Payment address mismatch: the quote asks to pay ${usdc.payTo}, but the credential expects ${settings.payTo}. Refusing to sign: check the API Base URL.`,
+			`Payment address mismatch: the quote asks to pay ${typeof adresse === 'string' ? adresse : String(JSON.stringify(adresse)).slice(0, 60)}, but the credential expects ${settings.payTo}. Refusing to sign: check the API Base URL.`,
 		);
 	}
 

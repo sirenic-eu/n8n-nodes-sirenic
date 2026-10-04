@@ -140,6 +140,48 @@ describe('dry run', () => {
 		}
 	});
 
+	it('a USDC option whose payTo is missing or not text is refused like any other address, never with a TypeError', async () => {
+		// Up to 0.16.0, `payTo.toLowerCase()` threw "Cannot read properties of
+		// undefined" on such an option: no signature either, but an error a user
+		// cannot act on, instead of the refusal every other address gets.
+		for (const payTo of [undefined, null, 42, {}, [PAY_TO]]) {
+			const usdc: Record<string, unknown> = {
+				scheme: 'exact',
+				network: NETWORK,
+				asset: USDC,
+				amount: '350000',
+				maxTimeoutSeconds: 120,
+				extra: { name: 'USD Coin', version: '2' },
+				...(payTo === undefined ? {} : { payTo }),
+			};
+			const appels = vi.fn(async () =>
+				new Response('{}', {
+					status: 402,
+					headers: {
+						'content-type': 'application/json',
+						'payment-required': Buffer.from(JSON.stringify({ x402Version: 2, accepts: [usdc] })).toString('base64'),
+					},
+				}),
+			);
+			vi.stubGlobal('fetch', appels);
+			const payer = new SirenicPayer(settings);
+
+			const erreur = await payer.call('/v1/entreprise/552032534/capital', 120_000, false).then(
+				() => null,
+				(e: unknown) => e,
+			);
+
+			expect(erreur, JSON.stringify(payTo)).toBeInstanceOf(Error);
+			expect(erreur, JSON.stringify(payTo)).not.toBeInstanceOf(TypeError);
+			expect((erreur as Error).message, JSON.stringify(payTo)).toMatch(
+				/^Payment address mismatch: the quote asks to pay .+, but the credential expects 0x76A672EEe56D29D475b0715cc03B8C99D70EC8A2\. Refusing to sign/,
+			);
+			// One request only: nothing was replayed with a signature.
+			expect(appels, JSON.stringify(payTo)).toHaveBeenCalledTimes(1);
+			expect(payer.totalPaid).toBe(0);
+		}
+	});
+
 	it('an option the node does not understand is skipped, and only the checked USDC option is signed', async () => {
 		const signees: Array<Record<string, unknown>> = [];
 		vi.stubGlobal(
