@@ -143,11 +143,13 @@ Activating the workflow **pays** for the watch, at the per-target price of the c
 | 90 days | $0.135 | $13.50 | −10 % |
 | 365 days | $0.50 | $50.00 | −17.8 % |
 
-On the wallet rail, raise *Max Amount Per Call* on the credential accordingly: a yearly
-watch on 100 targets quotes at $50.00, well above the $1.00 default. On the API-key rail,
-the watch is debited from your prepaid credits. Nothing else spends anything: re-activating
-re-uses the watch it already bought, a test listen refuses to create one, and deactivating
-keeps the days you have paid for. Payment is final: stopping a watch refunds nothing.
+Raise the ceiling of the credential accordingly: a yearly watch on 100 targets quotes at
+$50.00, above the $1.00 default of *Max Amount Per Call* on the wallet rail, and above the
+default of 5 credits of *Max Spend Per Execution* on the API-key rail, which debits the
+watch from your prepaid credits. Either rail refuses a watch quoted above its ceiling
+before paying for it. Nothing else spends anything: re-activating re-uses the watch it
+already bought, a test listen refuses to create one, and deactivating keeps the days you
+have paid for. Payment is final: stopping a watch refunds nothing.
 
 Changing **Duration** on a workflow that is already active charges nothing and does not
 restart the watch: the new duration is what the next **renewal** buys.
@@ -176,7 +178,7 @@ Same routes, same prices, same responses. Only the payment header differs.
 | How you pay | Prepaid credits, in euros | A USDC payment signed per call |
 | Account | Yes | None at all |
 | Free tier | 150 calls a month on routes at $0.05 or less | None |
-| Ceiling | Counts what the API reports it charged: the call that crosses the ceiling is charged, the next one is refused | Refuses a quote above the cap, before signing |
+| Ceiling | Refuses a call whose quote would cross the ceiling, before sending the key | Refuses a quote above the cap, before signing |
 
 **Which one?** If you are a finance, CRM or procurement team, take the API key:
 there is nothing to fund and nothing to sign. The wallet exists for agents and for
@@ -213,13 +215,21 @@ funds:
 | **Expected Payment Address** | Sirenic's address | The node refuses to pay anyone else, so a spoofed endpoint cannot redirect funds |
 
 On the API-key rail, **Max Spend Per Execution** counts credits (1 credit = 1 euro,
-default 5): it adds up what the API reports it charged and stops before the next call once
-the ceiling is reached; 0 means no ceiling.
+default 5). Before each paid call the node asks the API for the quote of that call
+without sending the key, a free request that took about 20 ms when measured, and refuses
+the call that would take the execution above the ceiling; what it adds up is what the API
+reports it charged. The quote counts even when the monthly free quota would cover the
+call, so a call that would have been free can be refused at the edge of the ceiling. 0
+means no ceiling, and then no quote is asked for.
 
-Every item the node returns says what it cost in `_sirenic`: `paid_usd` for the call and
-`execution_total_usd` for the execution so far, in the unit given by `_sirenic.unit`. That
-unit is `usd` on the wallet rail, and `credits_eur` on the API-key rail, which debits in
-credits the same number as the dollar price (1 credit = 1 euro).
+Both rails read the quote before paying and refuse the call that would take the execution
+above its ceiling: before signing on the wallet rail, before sending the key on the
+API-key rail.
+
+`paid_usd` (the call) and `execution_total_usd` (the execution so far) sit in `_sirenic`
+on every item of the Sirenic node that carries them, in the unit given by
+`_sirenic.unit`. That unit is `usd` on the wallet rail, and `credits_eur` on the API-key
+rail, which debits in credits the same number as the dollar price (1 credit = 1 euro).
 
 On either rail, turn on **Dry Run** in Options to see what a call would cost without
 paying for it.

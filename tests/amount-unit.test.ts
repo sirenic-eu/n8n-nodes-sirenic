@@ -172,8 +172,10 @@ describe('the API-key rail counts credits, and says so', () => {
 	});
 
 	it('the ceiling it enforces is read in credits, and its refusal counts credits, never USD', async () => {
-		// Ceiling of 0.5 credit, 0.4 debited per call: the third call is refused
-		// before it is sent, with 0.8 credit already spent.
+		// Ceiling of 0.5 credit, a route quoted 0.5 and debited 0.4: the first
+		// call fits (0.5), the second would reach 0.9 and is refused before the
+		// key is sent. Up to 0.16.0 the second was sent too, and 0.8 credit was
+		// charged under a ceiling of 0.5.
 		const appels = apiPayante('0.4');
 
 		const refus = await sirenic(contexte('apiKey', cleApi(0.5), 3)).then(
@@ -181,11 +183,12 @@ describe('the API-key rail counts credits, and says so', () => {
 			(erreur: unknown) => erreur,
 		);
 
-		expect(appels).toHaveLength(2);
+		// Two quotes asked for without the key, one call sent with it.
+		expect(appels).toHaveLength(3);
 		expect(refus).toBeInstanceOf(Error);
 		const message = (refus as Error).message;
 		expect(message).toMatch(
-			/Spending ceiling reached: 0\.8 credits charged in this execution, limit 0\.5 credits \(1 credit = 1 euro\)/,
+			/Spending ceiling: this call is quoted 0\.5 credits and would bring the execution total to 0\.9 credits, above the "Max Spend Per Execution" ceiling of 0\.5 credits \(1 credit = 1 euro\)/,
 		);
 		expect(message).not.toMatch(/usd|dollar|\$/i);
 	});

@@ -220,7 +220,7 @@ export class SirenicTrigger implements INodeType {
 						name: 'Created and Managed by This Trigger',
 						value: 'managed',
 						description:
-							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year; on the wallet rail, raise Max Amount Per Call on the credential accordingly). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
+							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year; raise the ceiling of the credential accordingly: Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
 					},
 					{
 						name: 'Already Created Elsewhere',
@@ -268,7 +268,7 @@ export class SirenicTrigger implements INodeType {
 						name: '365 Days, $0.50 per Target (17.8% Off)',
 						value: 365,
 						description:
-							'Up to $50.00 for the maximum of 100 targets. On the wallet rail, raise Max Amount Per Call on the credential before activating.',
+							'Up to $50.00 for the maximum of 100 targets. Raise the ceiling of the credential before activating: Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail.',
 					},
 				],
 			},
@@ -447,8 +447,12 @@ export class SirenicTrigger implements INodeType {
 					requete.set('webhook', url);
 				}
 
+				// One caller for this activation: its ceiling counts every paid call
+				// the activation makes.
+				const payer = await appelant.call(this);
 				const corps = await appelPaye.call(
 					this,
+					payer,
 					`/v1/surveillance/creer?${requete.toString()}`,
 					'Creating the watch',
 				);
@@ -643,8 +647,11 @@ async function entretenir(
 			// Duration is re-read on EVERY renewal: changing the dropdown on a live
 			// workflow re-creates nothing, but the next renewal buys the new value.
 			requete.set('duree', String(dureeChoisie.call(this)));
+			// One caller for this poll, built only when there is something to pay.
+			const payer = await appelant.call(this);
 			const corps = await appelPaye.call(
 				this,
+				payer,
 				`/v1/surveillance/${encodeURIComponent(etat.jeton ?? '')}/renouveler?${requete.toString()}`,
 				'Renewing the watch',
 			);
@@ -717,8 +724,13 @@ function oublierSurveillance(etat: EtatNode): void {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Signs and settles one x402 call, then turns an API refusal into something the
- * user can act on.
+ * Makes one paid call through the caller of this execution (an x402 signature
+ * or the API key), then turns an API refusal into something the user can act
+ * on.
+ *
+ * The caller is built by the hook, once per execution, and passed in: up to
+ * 0.16.0 this function built a new one for every paid call, so on the API-key
+ * rail the ceiling started at zero each time and never refused a watch.
  *
  * The two refusals that actually happen deserve their own words: a webhook URL
  * that is not publicly reachable, and a quote above the ceiling of the
@@ -726,11 +738,10 @@ function oublierSurveillance(etat: EtatNode): void {
  */
 async function appelPaye(
 	this: IHookFunctions | IPollFunctions,
+	payer: AppelantSirenic,
 	chemin: string,
 	quoi: string,
 ): Promise<IDataObject> {
-	const payer = await appelant.call(this);
-
 	let resultat;
 	try {
 		resultat = await payer.call(chemin, TIMEOUT_PAIEMENT_MS, false);
@@ -740,7 +751,7 @@ async function appelPaye(
 			`${quoi} failed: ${error instanceof Error ? error.message : String(error)}`,
 			{
 				description:
-					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00: on the wallet rail, raise Max Amount Per Call on the Sirenic credential if the quote was refused, or pick a shorter Duration.',
+					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00. If a ceiling of the Sirenic credential refused the quote, raise it (Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail) or pick a shorter Duration.',
 			},
 		);
 	}

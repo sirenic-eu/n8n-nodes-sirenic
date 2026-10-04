@@ -73,11 +73,13 @@ export class SirenicApiKeyApi implements ICredentialType {
 		},
 		{
 			/**
-			 * A ceiling still matters on this rail. It cannot refuse a quote, since this
-			 * rail gets none, so it counts what the API says it charged
-			 * (`x-credits-charged`, one header per response): the call that crosses the
-			 * ceiling is charged, and the next one is refused before it is sent. That is
-			 * what stands between a loop over 10 000 rows and an empty balance.
+			 * A ceiling still matters on this rail: it is what stands between a loop
+			 * over 10 000 rows and an empty balance. Before each paid call the node
+			 * asks the API for the call's quote without the key (free, the request Dry
+			 * Run makes) and refuses the call that would take the execution above the
+			 * ceiling; what it adds up is what the API says it charged
+			 * (`x-credits-charged`). Up to 0.16.0 it only did the adding up, so the
+			 * call that crossed the ceiling was charged and the next one refused.
 			 *
 			 * It counts credits, 1 credit = 1 euro, and says so: up to 0.15.0 it was
 			 * labelled "(USD)", so a ceiling read as 5 dollars was 5 euros. Only the
@@ -90,7 +92,7 @@ export class SirenicApiKeyApi implements ICredentialType {
 			required: true,
 			typeOptions: { minValue: 0, numberPrecision: 3 },
 			description:
-				'Ceiling across every item of one execution, in credits, counted from what the API reports it charged. Set it to 0 to allow an uncapped execution, and only do that when something else bounds the number of items.',
+				'Ceiling across every item of one execution, in credits. Before each paid call the node reads its free quote and refuses the call that would cross the ceiling; spending is counted from what the API reports it charged. Set it to 0 to allow an uncapped execution, and only do that when something else bounds the number of items.',
 		},
 		{
 			displayName: 'API Base URL',

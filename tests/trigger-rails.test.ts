@@ -108,11 +108,20 @@ const RAILS: Rail[] = [
 			},
 		},
 		base: 'https://cle.example.test',
+		// As the API answers a paid route on this rail: its quote without the
+		// key, the watch and the debit with it.
 		reseauPayant: (corps) =>
-			reseau(() => json(corps, 200, { 'x-credits-charged': '0.1' })),
+			reseau((appels, url) =>
+				appels[appels.length - 1]!.entetes['X-Api-Key']
+					? json(corps, 200, { 'x-credits-charged': '0.1' })
+					: json({}, 402, { 'payment-required': quote('100000', url) }),
+			),
+		// The ceiling (5) is checked against the quote, without the key, before
+		// the paid call goes out with it.
 		verifierPaiement: (appels) => {
-			expect(appels).toHaveLength(1);
-			expect(appels[0]!.entetes['X-Api-Key']).toBe(CLE_API);
+			expect(appels).toHaveLength(2);
+			expect(appels[0]!.entetes['X-Api-Key']).toBeUndefined();
+			expect(appels[1]!.entetes['X-Api-Key']).toBe(CLE_API);
 		},
 	},
 	{
