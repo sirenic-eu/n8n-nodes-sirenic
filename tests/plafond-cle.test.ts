@@ -107,11 +107,32 @@ interface Tarif {
 	corps?: Record<string, unknown>;
 }
 
+/** The PDF of a filed deed, as the API streams it. */
+const PDF_ACTE = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.from([0x80, 0xff, 0x00, 0xfe])]);
+
+/**
+ * What the access policy of the API answers for a deed asked for without a
+ * key (`politiqueAccesV1`, mounted BEFORE the x402 gate): no quote, a 401.
+ */
+function compteRequis(): Response {
+	return json(
+		{
+			error: 'compte_requis',
+			message:
+				'Filed deeds (statutes, minutes...) have been reserved to identified Sirenic accounts since 2026-09-19: they carry personal data. Present an account API key (x-api-key header); filed annual accounts (/v1/documents/bilans/{id}) remain available via x402. Nothing is charged.',
+			compte_url: 'https://api.sirenic.eu/compte',
+		},
+		401,
+	);
+}
+
 /**
  * Stubs `fetch` with the API as the API-key rail meets it. A path absent from
- * `tarifs` is off the price grid: free, the same answer with or without a key.
+ * `tarifs` and `actes` is off the price grid: free, the same answer with or
+ * without a key. A path in `actes` is a deed: without the key, the 401 of the
+ * access policy; with it, the PDF and the debit given.
  */
-function apiSimulee(tarifs: Record<string, Tarif>) {
+function apiSimulee(tarifs: Record<string, Tarif>, actes: Record<string, string> = {}) {
 	const requetes: Requete[] = [];
 	vi.stubGlobal(
 		'fetch',
@@ -121,6 +142,14 @@ function apiSimulee(tarifs: Record<string, Tarif>) {
 			const entetes = new Headers(init?.headers);
 			const cle = entetes.get('X-Api-Key');
 			requetes.push({ chemin, cle, autorisation: entetes.get('Authorization') });
+			const debitActe = actes[chemin];
+			if (debitActe !== undefined) {
+				if (cle === null) return compteRequis();
+				return new Response(PDF_ACTE, {
+					status: 200,
+					headers: { 'content-type': 'application/pdf', 'x-credits-charged': debitActe },
+				});
+			}
 			const tarif = tarifs[chemin];
 			if (!tarif) return json({ suggestions: [] }, 200);
 			if (cle === null) {
@@ -363,18 +392,122 @@ describe('API-key rail: the ceiling is checked against the quote, before the key
 	});
 });
 
+/** What a refusal says when a deed was, or would be, checked after the call. */
+const PHRASE_ACTES =
+	'Deed downloads require an account: their price cannot be read without the key, so the ceiling is checked after the call; the overshoot is bounded by one deed price.';
+
+describe('API-key rail, deed downloads: the API answers 401 compte_requis without the key, before any quote', () => {
+	const ACTE = '/v1/documents/actes/acte-essai-1';
+	const actes = (n: number) => Array.from({ length: n }, (_, i) => `/v1/documents/actes/acte-essai-${i + 1}`);
+
+	it('the call goes out with the key, the PDF comes back untouched, and its debit counts', async () => {
+		// The 0.17.0 of the first review answered this with the 401 itself: the
+		// key was never sent, and no deed could be downloaded under a ceiling.
+		const api = apiSimulee({}, { [ACTE]: '0.1' });
+		const a = appelant(5);
+
+		const r = await a.call(ACTE, 30_000, false);
+
+		expect(r.status).toBe(200);
+		expect(r.binary?.contentType).toBe('application/pdf');
+		expect(r.binary?.data.equals(PDF_ACTE)).toBe(true);
+		expect(r.paid).toBe(0.1);
+		expect(a.totalPaid).toBe(0.1);
+		expect(api.requetes).toEqual([
+			{ chemin: ACTE, cle: null, autorisation: null },
+			{ chemin: ACTE, cle: CLE, autorisation: null },
+		]);
+	});
+
+	it('the overshoot is bounded by one deed: once the credits charged reach the ceiling, the next deed is refused before the key is sent', async () => {
+		// Ceiling 0.25, deeds at 0.1: the third goes out at 0.2 and ends at 0.3,
+		// 0.05 over; the fourth is refused, and says why.
+		const chemins = actes(4);
+		const api = apiSimulee({}, Object.fromEntries(chemins.map((c) => [c, '0.1'])));
+		const a = appelant(0.25);
+
+		const issues = await jouer(a, chemins);
+
+		expect(issues.slice(0, 3)).toEqual([0.1, 0.1, 0.1]);
+		expect(issues[3]).toBe(
+			`refused: Spending ceiling: 0.3 credits are already charged in this execution, at or above the "Max Spend Per Execution" ceiling of 0.25 credits (1 credit = 1 euro). ${PHRASE_ACTES} Nothing was charged: the key was not sent. Raise the ceiling on the Sirenic API Key credential, or send fewer items.`,
+		);
+		expect(a.totalPaid).toBe(0.3);
+		expect(api.avecCle()).toEqual(chemins.slice(0, 3));
+	});
+
+	it('a deed is refused at exactly the ceiling, as the rule of 0.16.0 refused any call there', async () => {
+		const chemins = actes(3);
+		const api = apiSimulee({}, Object.fromEntries(chemins.map((c) => [c, '0.1'])));
+		const a = appelant(0.2);
+
+		const issues = await jouer(a, chemins);
+
+		expect(issues.slice(0, 2)).toEqual([0.1, 0.1]);
+		expect(issues[2]).toMatch(/^refused: Spending ceiling: 0\.2 credits are already charged in this execution/);
+		expect(api.avecCle()).toEqual(chemins.slice(0, 2));
+	});
+
+	it('after a deed took the total over the ceiling, the refusal of the next call says why', async () => {
+		const api = apiSimulee(tarifs({ '/v1/a': 0.95, '/v1/b': 0.005 }), { [ACTE]: '0.1' });
+		const a = appelant(1);
+
+		const issues = await jouer(a, ['/v1/a', ACTE, '/v1/b']);
+
+		expect(issues.slice(0, 2)).toEqual([0.95, 0.1]);
+		expect(issues[2]).toBe(
+			`refused: Spending ceiling: this call is quoted 0.005 credits and would bring the execution total to 1.055 credits, above the "Max Spend Per Execution" ceiling of 1 credits (1 credit = 1 euro). ${PHRASE_ACTES} Nothing was charged: the key was not sent. Raise the ceiling on the Sirenic API Key credential, or send fewer items.`,
+		);
+		expect(api.avecCle()).toEqual(['/v1/a', ACTE]);
+	});
+
+	it.each([
+		{ cas: '401 with another reason', reponse: () => json({ error: 'cle_invalide' }, 401) },
+		{ cas: '401 with no reason', reponse: () => json({ message: 'compte_requis' }, 401) },
+		{ cas: '401 in plain text', reponse: () => new Response('compte_requis', { status: 401, headers: { 'content-type': 'text/plain' } }) },
+		{ cas: '401 with the reason in another case', reponse: () => json({ error: 'COMPTE_REQUIS' }, 401) },
+		{ cas: '403 with that reason', reponse: () => json({ error: 'compte_requis' }, 403) },
+	])('$cas on the quote request: returned as it is, and the key is never sent', async ({ reponse }) => {
+		const avecCle: string[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (url: string | URL, init?: RequestInit) => {
+				if (new Headers(init?.headers).get('X-Api-Key')) {
+					avecCle.push(String(url));
+					return new Response(PDF_ACTE, {
+						status: 200,
+						headers: { 'content-type': 'application/pdf', 'x-credits-charged': '0.1' },
+					});
+				}
+				return reponse();
+			}),
+		);
+		const a = appelant(5);
+
+		const r = await a.call(ACTE, 30_000, false);
+
+		expect(r.status).toBe(reponse().status);
+		expect(r.paid).toBe(0);
+		expect(avecCle).toEqual([]);
+		expect(a.totalPaid).toBe(0);
+	});
+});
+
 /* -------------------------------------------------------------------------- */
 /* The whole node                                                             */
 /* -------------------------------------------------------------------------- */
 
-/** A minimal IExecuteFunctions: `items` company profiles, only the API-key credential. */
-function contexteNoeud(plafond: number, items: number, continuer: boolean) {
+/** A minimal IExecuteFunctions: `items` items of one operation, only the API-key credential. */
+function contexteNoeud(
+	plafond: number,
+	items: number,
+	continuer: boolean,
+	operation: Record<string, unknown> = { resource: 'frenchCompany', operation: 'getProfile', siren: '418009726' },
+) {
 	const node = new Sirenic();
 	const params: Record<string, unknown> = {
 		authentication: 'apiKey',
-		resource: 'frenchCompany',
-		operation: 'getProfile',
-		siren: '418009726',
+		...operation,
 		options: {},
 	};
 	const identifiants: Identifiants = {
@@ -392,7 +525,13 @@ function contexteNoeud(plafond: number, items: number, continuer: boolean) {
 		}),
 		getCredentials: lecteurIdentifiants(node.description, params as INodeParameters, identifiants),
 		continueOnFail: () => continuer,
-		helpers: {},
+		helpers: {
+			prepareBinaryData: async (data: Buffer, fileName: string, mimeType: string) => ({
+				data: data.toString('base64'),
+				fileName,
+				mimeType,
+			}),
+		},
 	} as unknown as IExecuteFunctions;
 }
 
@@ -423,6 +562,37 @@ describe('the Sirenic node, API-key rail with only its credential', () => {
 		expect(json[2]!.error).toMatch(/^Spending ceiling/);
 		expect(json[2]!._sirenic).toBeUndefined();
 		expect(api.avecCle()).toEqual([PROFIL, PROFIL]);
+	});
+
+	it('Download Document on a deed, under the default ceiling of 5: the PDF is attached and its debit counts', async () => {
+		const ACTE = '/v1/documents/actes/acte-essai-1';
+		const api = apiSimulee({}, { [ACTE]: '0.1' });
+
+		const [sortie = []] = await new Sirenic().execute.call(
+			contexteNoeud(5, 1, false, {
+				resource: 'frenchCompany',
+				operation: 'downloadDocument',
+				documentType: 'actes',
+				documentId: 'ACTE-ESSAI-1',
+			}),
+		);
+
+		expect(sortie).toHaveLength(1);
+		expect(sortie[0]!.json._sirenic).toEqual({
+			resource: 'frenchCompany',
+			operation: 'downloadDocument',
+			status: 200,
+			paid_usd: 0.1,
+			execution_total_usd: 0.1,
+			unit: 'credits_eur',
+		});
+		expect(sortie[0]!.binary?.data).toEqual({
+			data: PDF_ACTE.toString('base64'),
+			fileName: 'downloadDocument.pdf',
+			mimeType: 'application/pdf',
+		});
+		expect(api.sansCle()).toEqual([ACTE]);
+		expect(api.avecCle()).toEqual([ACTE]);
 	});
 });
 

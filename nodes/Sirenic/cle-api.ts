@@ -55,6 +55,30 @@ function milliemesDuDevis(usd: number): number {
 /** The answer to a quote request: the quote, or an answer that is not one. */
 type Sonde = { entete: string | null } | { reponse: CallResult };
 
+/** How every refusal of the ceiling ends. */
+const RIEN_FACTURE =
+	'Nothing was charged: the key was not sent. Raise the ceiling on the Sirenic API Key credential, or send fewer items.';
+
+/** What a refusal says when a deed was, or would be, checked after the call. */
+const PHRASE_ACTES =
+	'Deed downloads require an account: their price cannot be read without the key, so the ceiling is checked after the call; the overshoot is bounded by one deed price.';
+
+/**
+ * The answer the API gives to a deed asked for without a key. Its access
+ * policy, which runs before the x402 gate, reserves filed deeds to accounts and
+ * answers 401 `compte_requis`, with no quote. That status with that code, and
+ * nothing else: any other answer stays what it is.
+ */
+function estCompteRequis(reponse: CallResult): boolean {
+	const corps = reponse.body;
+	return (
+		reponse.status === 401 &&
+		typeof corps === 'object' &&
+		corps !== null &&
+		(corps as Record<string, unknown>).error === 'compte_requis'
+	);
+}
+
 export class SirenicKeyCaller implements AppelantSirenic {
 	/**
 	 * The API debits credits, 1 credit = 1 euro, and reports them in
@@ -66,6 +90,9 @@ export class SirenicKeyCaller implements AppelantSirenic {
 
 	/** Spent in this execution, in whole thousandths of a credit: an exact count. */
 	private depenseMilliemes = 0;
+
+	/** Whether a deed went out in this execution, its ceiling checked after the call. */
+	private acteApresCoup = false;
 
 	constructor(private readonly settings: KeySettings) {}
 
@@ -87,23 +114,43 @@ export class SirenicKeyCaller implements AppelantSirenic {
 		// the ceiling was charged. It now reads the price of the call first, from
 		// the free quote the API returns without the key (the request Dry Run
 		// makes), and refuses the call that would take the execution above the
-		// ceiling, as the wallet refuses a quote before signing. A ceiling of 0
-		// means no ceiling, and no quote is asked for.
+		// ceiling, as the wallet refuses a quote before signing. Deed downloads
+		// are the one exception (below). A ceiling of 0 means no ceiling, and no
+		// quote is asked for.
 		const plafond = this.settings.maxSpendPerExecution;
 		if (plafond > 0) {
 			const sonde = await this.sonder(url);
-			// Not a quote, so not a paid call: a free route answers with its data
-			// and an error stays an error, as on the wallet rail. Nothing charged.
-			if ('reponse' in sonde) return sonde.reponse;
-			const prix = quotedPriceUsd(sonde.entete);
-			if (prix.usd === null) throw new Error(refusDevisIllisible(prix.reason));
-			const devis = milliemesDuDevis(prix.usd);
-			const total = (this.depenseMilliemes + devis) / 1000;
-			if (total > plafond) {
-				throw new Error(
-					`Spending ceiling: this call is quoted ${devis / 1000} credits and would bring the execution total to ${total} credits, above the "Max Spend Per Execution" ceiling of ${plafond} credits (1 credit = 1 euro). ` +
-						'Nothing was charged: the key was not sent. Raise the ceiling on the Sirenic API Key credential, or send fewer items.',
-				);
+			if ('reponse' in sonde) {
+				// Not a quote, so not a paid call: a free route answers with its data
+				// and an error stays an error, as on the wallet rail. Nothing charged.
+				if (!estCompteRequis(sonde.reponse)) return sonde.reponse;
+				// A deed: the API serves it to accounts only, and answers this
+				// request, made without the key, before any quote. Its price cannot
+				// be read without the key, so the call goes out with the key and the
+				// ceiling is checked AFTER it, as up to 0.16.0: a deed is refused once
+				// the credits charged reach the ceiling, so the overshoot is bounded by
+				// one deed price (0.10 credit). Remove this exception in the next
+				// version, once the API joins its quote to that 401 (Sirenic ticket
+				// #471).
+				if (this.depenseMilliemes / 1000 >= plafond) {
+					throw new Error(
+						`Spending ceiling: ${this.totalPaid} credits are already charged in this execution, at or above the "Max Spend Per Execution" ceiling of ${plafond} credits (1 credit = 1 euro). ` +
+							`${PHRASE_ACTES} ${RIEN_FACTURE}`,
+					);
+				}
+				this.acteApresCoup = true;
+			} else {
+				const prix = quotedPriceUsd(sonde.entete);
+				if (prix.usd === null) throw new Error(refusDevisIllisible(prix.reason));
+				const devis = milliemesDuDevis(prix.usd);
+				const total = (this.depenseMilliemes + devis) / 1000;
+				if (total > plafond) {
+					// After a deed, the total may already be over the ceiling: say why.
+					throw new Error(
+						`Spending ceiling: this call is quoted ${devis / 1000} credits and would bring the execution total to ${total} credits, above the "Max Spend Per Execution" ceiling of ${plafond} credits (1 credit = 1 euro). ` +
+							`${this.acteApresCoup ? `${PHRASE_ACTES} ` : ''}${RIEN_FACTURE}`,
+					);
+				}
 			}
 		}
 
@@ -136,7 +183,9 @@ export class SirenicKeyCaller implements AppelantSirenic {
 	 * request, so they cannot disagree on what a call costs.
 	 *
 	 * Any other answer is not a quote: a free route answers with its data (the
-	 * same answer it gives with the key) and an error stays an error.
+	 * same answer it gives with the key) and an error stays an error. One
+	 * answer differs with the key, and `call` reads it: the 401 a deed gets
+	 * without one.
 	 */
 	private async sonder(url: string): Promise<Sonde> {
 		const sonde = await fetch(url, {

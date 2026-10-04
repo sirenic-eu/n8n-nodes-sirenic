@@ -220,7 +220,7 @@ export class SirenicTrigger implements INodeType {
 						name: 'Created and Managed by This Trigger',
 						value: 'managed',
 						description:
-							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year; raise the ceiling of the credential accordingly: Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
+							'Activating the workflow creates the watch and PAYS for it, at the per-target price of the chosen Duration (up to $5.00 for 100 targets over 30 days, $50.00 over a year; raise the ceilings of the credential accordingly: Max Amount Per Call and Max Amount Per Execution on the wallet rail, Max Spend Per Execution on the API-key rail). Deactivating keeps it unless you say otherwise, and re-activating never pays twice.',
 					},
 					{
 						name: 'Already Created Elsewhere',
@@ -268,7 +268,7 @@ export class SirenicTrigger implements INodeType {
 						name: '365 Days, $0.50 per Target (17.8% Off)',
 						value: 365,
 						description:
-							'Up to $50.00 for the maximum of 100 targets. Raise the ceiling of the credential before activating: Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail.',
+							'Up to $50.00 for the maximum of 100 targets. Raise the ceilings of the credential before activating: Max Amount Per Call and Max Amount Per Execution on the wallet rail, Max Spend Per Execution on the API-key rail.',
 					},
 				],
 			},
@@ -751,7 +751,7 @@ async function appelPaye(
 			`${quoi} failed: ${error instanceof Error ? error.message : String(error)}`,
 			{
 				description:
-					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00. If a ceiling of the Sirenic credential refused the quote, raise it (Max Amount Per Call on the wallet rail, Max Spend Per Execution on the API-key rail) or pick a shorter Duration.',
+					'Nothing was charged. A watch is priced per target AND per duration ($0.05 for 30 days, $0.135 for 90, $0.50 for a year), so 100 targets quote between $5.00 and $50.00. If a ceiling of the Sirenic credential refused the quote, raise it (Max Amount Per Call and Max Amount Per Execution on the wallet rail, Max Spend Per Execution on the API-key rail) or pick a shorter Duration.',
 			},
 		);
 	}
