@@ -291,6 +291,12 @@ Requires n8n with Node.js ≥ 22.22. No runtime dependencies: everything is bund
 - Machine-readable tool list: <https://api.sirenic.eu/llms.txt>
 - x402 protocol: <https://x402.org>
 
+## Star this repo
+
+If this node saved you a lookup, a star helps other n8n users find it.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sirenic-eu/n8n-nodes-sirenic&type=Date)](https://star-history.com/#sirenic-eu/n8n-nodes-sirenic&Date)
+
 ## License
 
 MIT
