@@ -291,6 +291,26 @@ Requires n8n with Node.js ≥ 22.22. No runtime dependencies: everything is bund
 - Machine-readable tool list: <https://api.sirenic.eu/llms.txt>
 - x402 protocol: <https://x402.org>
 
+## Badge
+
+A project that reads company data through Sirenic can say so with an image served by api.sirenic.eu, with no script and no cookie:
+
+[![company data | Sirenic](https://api.sirenic.eu/badge/company-data.svg)](https://api.sirenic.eu/en?utm_source=badge&utm_campaign=developpeur)
+
+Paste this snippet into your own README:
+
+```markdown
+[![company data | Sirenic](https://api.sirenic.eu/badge/company-data.svg)](https://api.sirenic.eu/en?utm_source=badge&utm_campaign=developpeur)
+```
+
+A KYB file, a PDF report or a briefing carries a verification number (`X-Sirenic-Verification-Id` header). When its receipt names a legal entity, its badge states what was issued and the day of issue, and leads to the public receipt of the response; otherwise (a sole trader, for instance), the badge address answers 404. No SIREN and no name in the image. Replace `{number}` with that number:
+
+```markdown
+[![Sirenic](https://api.sirenic.eu/badge/{number}.svg)](https://api.sirenic.eu/verifier/{number}?utm_source=badge)
+```
+
+French labels (`?lang=fr` on the image) and details: [api.sirenic.eu/en/connectors](https://api.sirenic.eu/en/connectors#badge).
+
 ## Star this repo
 
 If this node saved you a lookup, a star helps other n8n users find it.
