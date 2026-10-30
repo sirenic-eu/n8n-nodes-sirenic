@@ -194,7 +194,7 @@ describe('x402 v2 payload envelope', () => {
 	};
 
 	it('carries version 2, the authorization, the accepted requirement and the quote context', () => {
-		const payload = buildPaymentPayload(KEY_A, quote, accepted, 1785300000, randomNonce()) as {
+		const payload = buildPaymentPayload(KEY_A, quote, accepted, 1785300000, randomNonce(), 120) as {
 			x402Version: number;
 			payload: { authorization: Record<string, string>; signature: string };
 			accepted: unknown;
@@ -217,13 +217,13 @@ describe('x402 v2 payload envelope', () => {
 
 	it('refuses a quote without EIP-712 domain parameters rather than signing blind', () => {
 		expect(() =>
-			buildPaymentPayload(KEY_A, quote, { ...accepted, extra: {} }, 1785300000, randomNonce()),
+			buildPaymentPayload(KEY_A, quote, { ...accepted, extra: {} }, 1785300000, randomNonce(), 120),
 		).toThrow(/domain parameters/);
 	});
 
 	it('refuses a network it cannot map to a chain id', () => {
 		expect(() =>
-			buildPaymentPayload(KEY_A, quote, { ...accepted, network: 'solana:mainnet' }, 1785300000, randomNonce()),
+			buildPaymentPayload(KEY_A, quote, { ...accepted, network: 'solana:mainnet' }, 1785300000, randomNonce(), 120),
 		).toThrow(/Unsupported network/);
 	});
 });

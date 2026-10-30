@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.18.0 (2026-10-30)
+
+### The payment window of a quote is checked before signing
+
+On the wallet rail, the node read the window of the quote's USDC option
+(`maxTimeoutSeconds`) without checking it, and used it twice: the signed authorization
+stayed valid until the current time plus that window (`validBefore`), and the node waited
+for the paid answer at least that window plus 30 s. A text value such as "60" was
+appended to the current time instead of added to it: signed on 30 Oct 2026, the
+authorization stayed valid until the year 7652, for the amount and the address already
+checked. A huge number stretched the wait for the paid answer, up to 24.8 days; above
+that, Node.js cut the wait to 1 ms and abandoned the paid call as it started, and above
+49.7 days the call failed with a RangeError after signing. A missing window was signed as
+120 s, a window the API had not stated. Affected: every version of the wallet rail up to
+0.17.0. The node's own signer has read the window this way since 0.3.0, and 0.1.0 to
+0.2.0 signed through @x402/evm 2.18.0, which adds the field to the current time the same
+way; the wait has read it since 0.4.2. The API-key rail was not affected: it signs
+nothing.
+
+The node now signs only a window that is a whole number of seconds from 1 to 600, so the
+wait for a paid answer is 10 min 30 s at most. Anything else is refused before signing,
+with a message that quotes the value received, cut at 40 characters as for an unreadable
+amount: text such as "60", a fraction, 0, a negative number, more than 600, true, null,
+an object, a list, and a missing window, which x402 v2 requires and the API always sends.
+Nothing is signed and nothing is paid. Dry Run on the wallet rail refuses the same
+quotes, as it already refused an unreadable amount: one function reads the window
+(`paymentWindowSeconds`) for the check of the quote, the re-selection of the option to
+sign, the signature and the wait. On 30 Oct 2026 the API quoted 45 to 300 s depending on
+the route, 120 s by default.
+
+`tests/x402.test.ts` plays each refused value on the check of the quote, on the payment
+and on Dry Run, and 1, 120 and 600 s on all three, with `validBefore` equal to the
+current time plus the window and the wait equal to the window plus 30 s. Of its 46 new
+cases, the 37 refusals fail on 0.17.0 and the 9 accepted windows pass on both. The quote
+of the checks already in that file now carries the 120 s window the API sends, and the
+parity test against @x402/evm passes that window to the signer and expects the same
+`validBefore` as before.
+
+### Texts
+
+- The wallet credential: the description of Max Amount Per Call, which says to raise it
+  before activating a large watch, now names Max Amount Per Execution (default $5.00)
+  too, which refuses the same watch.
+
+No operation, parameter value or price changed.
+
 ## 0.17.0 (2026-10-04)
 
 ### The API-key ceiling refuses the call that would cross it, before the key is sent

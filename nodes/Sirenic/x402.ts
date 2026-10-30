@@ -45,6 +45,16 @@ const DECIMALS = 1_000_000;
 const MARGE_REGLEMENT_MS = 30_000;
 
 /**
+ * The payment windows this node signs, in whole seconds. The window of a quote
+ * (`maxTimeoutSeconds`) is how long the signed authorization stays valid and the
+ * floor of the wait for the paid answer: 600 s keeps that wait under 10 min 30 s
+ * with the margin above. On 30 Oct 2026 Sirenic's routes quoted 45 to 300 s,
+ * 120 s by default.
+ */
+const FENETRE_MIN_S = 1;
+const FENETRE_MAX_S = 600;
+
+/**
  * What the node and the trigger expect from a caller, whatever the rail.
  *
  * Two implementations: `SirenicPayer` signs one x402 payment per call, and
@@ -104,7 +114,8 @@ interface QuoteOption {
 	asset: string;
 	payTo: string;
 	amount: string;
-	maxTimeoutSeconds?: number;
+	/** Untrusted JSON: read through `paymentWindowSeconds` only, never as is. */
+	maxTimeoutSeconds?: unknown;
 	extra?: { name?: string; version?: string } & Record<string, unknown>;
 }
 
@@ -142,6 +153,26 @@ export function atomicAmount(value: unknown): bigint | null {
 }
 
 /**
+ * The window an x402 option grants the payment (`maxTimeoutSeconds`): a whole
+ * number of seconds from 1 to 600. Anything else (a fraction, 0, a negative or
+ * larger number, text such as "60", a boolean, null, an object, a list, or no
+ * window at all, which x402 v2 does not allow) is not a window the node signs
+ * and comes back as null. Up to 0.17.0 the window was read unchecked: "60" was
+ * appended to the current time as text instead of added to it, and a huge
+ * number stretched the wait for the paid answer. The check of the quote, the
+ * re-selection of the option to sign, the signature (`validBefore`) and that
+ * wait all take the window from here.
+ */
+export function paymentWindowSeconds(value: unknown): number | null {
+	return typeof value === 'number' &&
+		Number.isSafeInteger(value) &&
+		value >= FENETRE_MIN_S &&
+		value <= FENETRE_MAX_S
+		? value
+		: null;
+}
+
+/**
  * The one option this node ever reads a price from or pays: the `exact`
  * scheme, USDC, on Base. Sirenic also quotes EURC at the same number, and
  * reading or signing that option against a dollar figure would be wrong. The
@@ -160,7 +191,9 @@ export function isUsdcOnBase(option: unknown): boolean {
 }
 
 /**
- * Picks the USDC option of a quote and proves it is safe to sign.
+ * Picks the USDC option of a quote and proves it is safe to sign. Returns the
+ * amount and the window it checked: the payment signs those, and the dry run
+ * refuses what the payment would refuse.
  * Exported so it can be tested without touching the network.
  */
 export function checkQuote(
@@ -168,7 +201,7 @@ export function checkQuote(
 	settings: { payTo: string; maxPerCall: number },
 	spentSoFar: bigint,
 	maxPerExecution: number,
-): { amount: bigint } {
+): { amount: bigint; windowSeconds: number } {
 	const usdc = options.find(isUsdcOnBase);
 	if (!usdc) {
 		throw new Error(
@@ -191,6 +224,12 @@ export function checkQuote(
 			`The USDC amount in the payment quote (${String(JSON.stringify(usdc.amount)).slice(0, 40)}) is not a whole number of atomic units. Refusing to sign.`,
 		);
 	}
+	const windowSeconds = paymentWindowSeconds(usdc.maxTimeoutSeconds);
+	if (windowSeconds === null) {
+		throw new Error(
+			`The payment window in the payment quote (maxTimeoutSeconds: ${String(JSON.stringify(usdc.maxTimeoutSeconds)).slice(0, 40)}) is not a whole number of seconds from ${FENETRE_MIN_S} to ${FENETRE_MAX_S}. Refusing to sign.`,
+		);
+	}
 	const perCall = toAtomic(settings.maxPerCall);
 	if (amount > perCall) {
 		throw new Error(
@@ -204,7 +243,7 @@ export function checkQuote(
 			`This call would bring the execution total to $${fromAtomic(spentSoFar + amount).toFixed(6)}, above the "Max Amount Per Execution" cap of $${maxPerExecution}. Stopping before spending more.`,
 		);
 	}
-	return { amount };
+	return { amount, windowSeconds };
 }
 
 /** base64 helpers for the x402 headers (JSON payloads, UTF-8). */
@@ -287,9 +326,11 @@ const REFUS_DEVIS_ILLISIBLE: Record<QuoteUnreadable, (version: unknown) => strin
 /**
  * Builds the x402 v2 PAYMENT-SIGNATURE payload for one accepted requirement:
  * signs an EIP-3009 TransferWithAuthorization exactly like @x402/evm does
- * (validAfter 0, validBefore now+maxTimeoutSeconds, random 32-byte nonce,
- * EIP-712 domain taken from the quote's `extra.name`/`extra.version`), and
- * wraps it in the v2 envelope (payload + accepted + resource + extensions).
+ * (validAfter 0, validBefore now + the window, random 32-byte nonce, EIP-712
+ * domain taken from the quote's `extra.name`/`extra.version`), and wraps it in
+ * the v2 envelope (payload + accepted + resource + extensions). The window is
+ * the one `checkQuote` read from `accepted.maxTimeoutSeconds`, passed in so that
+ * nothing here reads that field again or falls back on a default.
  * Exported for the parity test against the reference implementation.
  */
 export function buildPaymentPayload(
@@ -298,6 +339,7 @@ export function buildPaymentPayload(
 	accepted: QuoteOption,
 	nowSeconds: number,
 	nonce: string,
+	windowSeconds: number,
 ): Record<string, unknown> {
 	if (!accepted.extra?.name || !accepted.extra?.version) {
 		throw new Error(
@@ -317,7 +359,7 @@ export function buildPaymentPayload(
 		to: toChecksumAddress(accepted.payTo),
 		value: accepted.amount,
 		validAfter: '0',
-		validBefore: (nowSeconds + (accepted.maxTimeoutSeconds ?? 120)).toString(),
+		validBefore: (nowSeconds + windowSeconds).toString(),
 		nonce,
 	};
 	const signature = signTransferWithAuthorization(
@@ -383,7 +425,12 @@ export class SirenicPayer implements AppelantSirenic {
 		}
 		const { quote } = lecture;
 		const options = quote.accepts ?? [];
-		const { amount } = checkQuote(options, this.settings, this.spent, this.settings.maxPerExecution);
+		const { amount, windowSeconds } = checkQuote(
+			options,
+			this.settings,
+			this.spent,
+			this.settings.maxPerExecution,
+		);
 
 		if (dryRun) {
 			return {
@@ -402,13 +449,14 @@ export class SirenicPayer implements AppelantSirenic {
 		}
 
 		// Sign EXACTLY the option that passed the checks: re-selected with the
-		// same predicate, plus the amount `checkQuote` authorised. A quote that
-		// mutated between the two lookups cannot reach the signer.
+		// same predicate, plus the amount and the window `checkQuote` authorised.
+		// A quote that mutated between the two lookups cannot reach the signer.
 		const accepted = options.find(
 			(o) =>
 				isUsdcOnBase(o) &&
 				o.payTo.toLowerCase() === this.settings.payTo.toLowerCase() &&
-				atomicAmount(o.amount) === amount,
+				atomicAmount(o.amount) === amount &&
+				paymentWindowSeconds(o.maxTimeoutSeconds) === windowSeconds,
 		);
 		if (!accepted) {
 			throw new Error('Quote changed between check and signature. Refusing to sign.');
@@ -419,13 +467,15 @@ export class SirenicPayer implements AppelantSirenic {
 			accepted,
 			Math.floor(Date.now() / 1000),
 			randomNonce(),
+			windowSeconds,
 		);
 
 		// The quote states the window the API grants this route; settlement happens
 		// AFTER the handler, so aborting before window + settlement pays for a
 		// response that is thrown away (up to $2.00 on capital links). The user's
-		// timeout can only ever extend that floor, never cut it short.
-		const plancher = (accepted.maxTimeoutSeconds ?? 120) * 1000 + MARGE_REGLEMENT_MS;
+		// timeout can only ever extend that floor, never cut it short. The window
+		// is the checked one: 10 min 30 s at most.
+		const plancher = windowSeconds * 1000 + MARGE_REGLEMENT_MS;
 		const response = await fetch(url, {
 			headers: {
 				Accept: 'application/json',
