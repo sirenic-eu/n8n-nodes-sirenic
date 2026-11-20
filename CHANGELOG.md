@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.19.0 (prepared on 2026-11-20, not published yet)
+
+### Get European Company offers the seventeen registers the API serves
+
+The Country list of Get European Company offered twelve countries. The API serves
+seventeen national registers under `/v1/eu/entreprise/{pays}/{id}`, as its OpenAPI
+states them on 20 Nov 2026: local copies of the Belgian, Croatian, Cypriot, Estonian,
+Irish, Lithuanian, Latvian, Norwegian, Romanian and Swedish registers, the Swiss, Czech,
+Finnish, Polish and Slovak registers queried live, and the Danish and British registers
+live too. Croatia, Cyprus, Ireland, Lithuania and Romania are added, and the Company
+Identifier help gives their formats: the OIB (eleven digits), HE or AE and up to seven
+digits, the CRO number (up to seven digits), the company code (nine digits) and the CUI
+(up to ten digits). Nothing changes for the twelve countries already offered.
+
+List Annual Filings now calls Croatia, Lithuania, Poland and Romania, which the API
+serves on their own accounts routes: Croatia and Poland list the filings recorded at the
+register, without figures ($0.01); Lithuania and Romania return the figures ($0.02).
+Up to 0.18.0 the node refused Poland before the call, as "not served". Cyprus, Czechia,
+Ireland and Switzerland have no accounts route and are still refused before any call.
+
+The README Coverage table lists the seventeen registers with their national IDs, says
+which ten are local copies and which seven are live, and no longer calls Denmark "coming
+soon": the API serves it, live, through the generic route.
+
+`tests/query-contract.test.ts` pins the seventeen countries and the accounts countries;
+both new cases fail on 0.18.0.
+
+### Publishing: the token is out of reach of the install scripts
+
+Nothing changes for users; this is how the package reaches npm. The publish workflow
+now has two jobs. `build` is the new `ci.yml` (also run on every push to main and every
+pull request): `npm ci` instead of `npm install`, typecheck, lint, tests, build, then
+`npm pack`, with no `id-token`, so the installation scripts of the lock file never run
+where the publication token can be minted. `publish` runs no code of any dependency: it
+refuses anything but the tag `v<version of package.json>` on a commit of main (a manual
+run from any branch published that branch's version before), installs npm 11.21.2
+exactly instead of `npm@latest`, and publishes the tarball `build` checked. Every action
+is pinned by commit. The five-minute provenance check is unchanged.
+
+### Templates
+
+`templates/` keeps the two workflows whose route no workflow of the gallery at
+<https://api.sirenic.eu/workflows> calls: T07 (weekly default-risk scoring) and T08
+(e-invoicing readiness audit). Their Google Sheets write now carries the full column
+schema and RAW cells (n8n 2.40 fails the write of the JSON as imported with an empty
+schema, and USER_ENTERED drops the leading zeros of a SIREN), and their section notes
+frame their nodes. T01, T02, T03 and T10 are removed: the gallery serves the same
+workflows on the same routes as W4, W2, W6 and W12. `verifier-templates.mjs` gains the
+two checks (column schema and RAW cells, notes that frame), which fail on T07 and T08 as
+they stood. The templates are not part of the npm package.
+
 ## 0.18.0 (2026-10-30)
 
 ### The payment window of a quote is checked before signing
