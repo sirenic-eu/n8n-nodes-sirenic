@@ -7,33 +7,17 @@
  * two cannot drift is to have a single source. Run it again after editing any
  * sticky:  node templates/generer-soumission.mjs
  *
- * Since 23/09/2026 the six templates use native nodes only (API key rail): n8n.io
- * renders their canvas preview by itself, so no screenshot is pasted any more
- * (the PNG captures in this folder show the old community-node graphs).
+ * Since 23/09/2026 the templates use native nodes only (API key rail): n8n.io
+ * renders their canvas preview by itself, so no screenshot is pasted any more.
+ * Since 20/11/2026 the folder keeps T07 and T08 only: T01, T02, T03 and T10
+ * called the same routes as W4, W2, W6 and W12 of https://api.sirenic.eu/workflows
+ * and were removed (kopko13/sirenic#177).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BRUT = 'https://raw.githubusercontent.com/sirenic-eu/n8n-nodes-sirenic/main/templates';
 
 const TEMPLATES = [
-	{
-		id: 'T01',
-		fichier: 'T01-verify-french-suppliers.json',
-		intro:
-			'Every new supplier row in your sheet is checked against the official French registries before you pay it: legal identity, VAT live against VIES, IBAN with bank identification, and a deterministic ready-to-invoice verdict. Wire-transfer fraud and deregistered companies are caught before the payment run, not after it.',
-	},
-	{
-		id: 'T02',
-		fichier: 'T02-enrich-hubspot-companies.json',
-		intro:
-			'New HubSpot companies are filled in from the official French registry (SIREN, legal form, NAF activity code, workforce, administrative status), and the SIREN becomes a dedup key your CRM can trust. Homonyms go to a ten-second human review instead of a confident wrong guess.',
-	},
-	{
-		id: 'T03',
-		fichier: 'T03-kyb-client-onboarding.json',
-		intro:
-			'Your onboarding form posts a SIREN and gets a full KYB file back in one call: legal identity, officers, insolvency proceedings, financials and sanctions screening, signed so it can be kept as audit evidence. The applicant is then auto-approved, queued for human review, or hard-stopped.',
-	},
 	{
 		id: 'T07',
 		fichier: 'T07-score-customer-credit-risk.json',
@@ -45,11 +29,6 @@ const TEMPLATES = [
 		fichier: 'T08-einvoicing-readiness-2026.json',
 		intro:
 			'From 1 September 2026 every French company must be able to receive electronic invoices. This audit walks your customer list and tells you, customer by customer, the invoicing identity, the computed intra-EU VAT number and the indicative obligation dates, so you know who to chase.',
-	},
-	{
-		id: 'T10',
-		fichier: 'T10-chat-french-registry-mcp.json',
-		// No intro: T10 carries it inside its sticky, the only text n8n publishes unrewritten.
 	},
 ];
 
@@ -67,8 +46,10 @@ const mots = (s) => s.split(/\s+/).filter(Boolean).length;
 
 let out = `# Kit de soumission des templates au portail n8n
 
-**Régénéré le 2026-09-23**, après le passage des six templates au rail clé d'API (nœuds
-natifs seulement, donc n8n Cloud), depuis les workflows eux-mêmes : la description à coller
+**Régénéré le 2026-11-20**, après le retrait de T01, T02, T03 et T10, que la galerie
+https://api.sirenic.eu/workflows sert déjà (W4, W2, W6, W12 ; kopko13/sirenic#177) ; depuis le
+2026-09-23, les templates passent par le rail clé d'API (nœuds natifs seulement, donc n8n Cloud).
+Le texte vient des workflows eux-mêmes : la description à coller
 EST le contenu du sticky jaune de chaque template, comme n8n l'exige (« include the entire
 description in it »). Si tu modifies un sticky, régénère ce fichier plutôt que de recopier
 à la main : c'est la seule façon d'éviter que les deux divergent.
@@ -79,15 +60,15 @@ et [description template](https://n8n.notion.site/n8n-workflow-template-descript
 
 | Règle n8n | État |
 |---|---|
-| Titre « verbe d'action + objet + où », capitalisation de phrase, sans emoji | ✅ les 6 |
-| Description en Markdown, sans balise HTML | ✅ les 6 |
-| Sections Who's it for / How it works / How to set up / Requirements / How to customize | ✅ les 6 |
+| Titre « verbe d'action + objet + où », capitalisation de phrase, sans emoji | ✅ les 2 |
+| Description en Markdown, sans balise HTML | ✅ les 2 |
+| Sections Who's it for / How it works / How to set up / Requirements / How to customize | ✅ les 2 |
 | Phrase d'accroche 1-2 lignes en tête (qui / quoi / pourquoi) | ✅ ajoutée ici |
-| Un sticky jaune portant TOUTE la description | ✅ les 6 |
-| Stickies neutres pour les étapes | ✅ les 6 (couleur 7) |
-| Nœuds natifs seulement : aucun disclaimer « self-hosted only », aperçu du canevas rendu par n8n.io | ✅ les 6 depuis le 23/09/2026 |
+| Un sticky jaune portant TOUTE la description | ✅ les 2 |
+| Stickies neutres pour les étapes | ✅ les 2 (couleur 7), qui encadrent chacune ses nœuds (contrôle 8 de \`verifier-templates.mjs\`) |
+| Nœuds natifs seulement : aucun disclaimer « self-hosted only », aperçu du canevas rendu par n8n.io | ✅ les 2 depuis le 23/09/2026 |
 | Pas de clé API en dur, pas d'identifiant personnel (Sheet ID, canal Slack, e-mail) | ✅ vérifié par \`verifier-templates.mjs\` |
-| Nœuds renommés pour dire ce qu'ils font | ✅ les 6 |
+| Nœuds renommés pour dire ce qu'ils font | ✅ les 2 |
 | Zéro tiret long dans un texte publié (règle interne du 23/09/2026) | ✅ vérifié par \`verifier-templates.mjs\` |
 
 n8n vise « ~200 mots » ; le compte de chaque description figure ci-dessous. La densité vient
@@ -96,8 +77,8 @@ plateforme agréée (PDP) », le rappel que les correspondances de sanctions ne 
 décision automatique, et les dates du mandat.
 
 Deux points **facultatifs** non appliqués, à décider :
-- n8n conseille un nœud **Set Fields** regroupant les variables à configurer. Aucun des 6 n'en a
-  (la config vit dans les nœuds Google Sheets / HubSpot).
+- n8n conseille un nœud **Set Fields** regroupant les variables à configurer. Aucun des 2 n'en a
+  (la config vit dans les nœuds Google Sheets).
 - n8n encourage une **vidéo Loom** de mise en route.
 
 ## Comment soumettre

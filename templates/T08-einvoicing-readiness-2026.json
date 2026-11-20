@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Check French e-invoicing readiness (2026 mandate)\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only: Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Create a Sirenic API key at https://api.sirenic.eu/compte (e-mail and magic link).\n2. Add a Header Auth credential in n8n (name X-Api-Key, value your srn_live_ key) and select it on the HTTP Request node.\n3. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Warnings`, filled by the workflow).\n4. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n5. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nn8n Cloud or self-hosted, native nodes only · a Sirenic API key (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add a live VIES check of the VAT number (/v1/tva/verifier/{numero}, $0.003); send the summary to Slack instead of email.",
+        "content": "## Check French e-invoicing readiness (2026 mandate)\n\n### Who's it for\nInvoicing software vendors, accountants and any French B2B company that has to send compliant electronic invoices. From 1 September 2026 every French company must be able to RECEIVE electronic invoices; issuing is phased (large and mid-size companies 2026, SMEs from 1 September 2027).\n\n### How it works\nThe workflow walks your customer sheet and calls Sirenic's e-invoicing preparation endpoint for each SIREN ($0.02). For every customer you get the invoicing identity (legal name, status, establishments with their SIRET), the computed intra-EU VAT number, and the indicative obligation dates derived from the company's INSEE size category. Results are written back to the sheet and a single summary email tells you who is ready and who needs chasing. Preparation only: Sirenic is not an accredited platform (PDP) and never issues or routes invoices. Failed requests are never billed.\n\n### How to set up\n1. Create a Sirenic API key at https://api.sirenic.eu/compte (e-mail and magic link).\n2. Add a Header Auth credential in n8n (name X-Api-Key, value your srn_live_ key) and select it on the HTTP Request node.\n3. Prepare a Google Sheet with a `SIREN` column (plus `Company`, `VAT`, `Reception since`, `Issuing since`, `Establishments`, `Warnings`, `Checked at`, filled by the workflow).\n4. Select the sheet in both Google Sheets nodes and set your recipient address in the Gmail node.\n5. Run manually once for the full audit, then keep the monthly schedule for new customers.\n\n### Requirements\nn8n Cloud or self-hosted, native nodes only · a Sirenic API key (pay-per-call, no subscription) · Google Sheets and Gmail credentials.\n\n### How to customize\nFilter the sheet to customers you actually invoice; add a live VIES check of the VAT number (/v1/tva/verifier/{numero}, $0.003); send the summary to Slack instead of email.",
         "height": 1144,
         "width": 560
       },
@@ -18,9 +18,9 @@
     },
     {
       "parameters": {
-        "content": "### 1. Walk the customer list\nManual run for the initial audit; the monthly schedule keeps newcomers covered.",
-        "height": 140,
-        "width": 400,
+        "content": "### 1. Walk the customer list\nManual run for the initial audit; the monthly schedule keeps newcomers covered. The loop takes one customer at a time.",
+        "height": 480,
+        "width": 600,
         "color": 7
       },
       "id": "sticky-step1-t08",
@@ -28,15 +28,15 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -260,
-        20
+        -240,
+        40
       ]
     },
     {
       "parameters": {
         "content": "### 2. Dates come from the size category\nObligation dates are derived from the company's INSEE category (GE/ETI/PME), which is why they are indicative: check the customer's own situation before relying on them contractually.",
-        "height": 189,
-        "width": 460,
+        "height": 320,
+        "width": 400,
         "color": 7
       },
       "id": "sticky-step2-t08",
@@ -44,8 +44,24 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        560,
-        720
+        440,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "color": 7,
+        "width": 400,
+        "height": 300,
+        "content": "### 3. One summary e-mail\nWhen every customer is done, the results are collected and sent in a single e-mail."
+      },
+      "id": "sticky-step3-t08",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -120
       ]
     },
     {
@@ -131,7 +147,7 @@
       "typeVersion": 4.2,
       "position": [
         480,
-        400
+        420
       ]
     },
     {
@@ -162,9 +178,84 @@
           "matchingColumns": [
             "SIREN"
           ],
-          "schema": []
+          "schema": [
+            {
+              "id": "SIREN",
+              "displayName": "SIREN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VAT",
+              "displayName": "VAT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reception since",
+              "displayName": "Reception since",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Issuing since",
+              "displayName": "Issuing since",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Establishments",
+              "displayName": "Establishments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Warnings",
+              "displayName": "Warnings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Checked at",
+              "displayName": "Checked at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
         },
-        "options": {}
+        "options": {
+          "cellFormat": "RAW"
+        }
       },
       "id": "sheets-write-t08",
       "name": "Write readiness back",
@@ -172,7 +263,7 @@
       "typeVersion": 4.5,
       "position": [
         700,
-        400
+        420
       ]
     },
     {
@@ -186,7 +277,7 @@
       "typeVersion": 1,
       "position": [
         480,
-        180
+        60
       ]
     },
     {
@@ -203,7 +294,7 @@
       "typeVersion": 2.1,
       "position": [
         700,
-        180
+        60
       ]
     }
   ],
