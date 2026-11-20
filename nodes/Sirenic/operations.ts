@@ -79,15 +79,23 @@ const COUNTRY: Field = {
 	type: 'options',
 	default: 'BE',
 	description: 'National register to query.',
+	// The seventeen national registers the API serves under /v1/eu/entreprise/{pays}/{id}, as its
+	// OpenAPI states them (measured on 2026-11-20, kopko13/sirenic#175): local copies BE, CY, EE,
+	// HR, IE, LT, LV, NO, RO, SE; live CH, CZ, FI, PL, SK; DK and GB live too.
 	options: [
 		{ name: 'Belgium', value: 'BE' },
+		{ name: 'Croatia', value: 'HR' },
+		{ name: 'Cyprus', value: 'CY' },
 		{ name: 'Czechia', value: 'CZ' },
 		{ name: 'Denmark', value: 'DK' },
 		{ name: 'Estonia', value: 'EE' },
 		{ name: 'Finland', value: 'FI' },
+		{ name: 'Ireland', value: 'IE' },
 		{ name: 'Latvia', value: 'LV' },
+		{ name: 'Lithuania', value: 'LT' },
 		{ name: 'Norway', value: 'NO' },
 		{ name: 'Poland', value: 'PL' },
+		{ name: 'Romania', value: 'RO' },
 		{ name: 'Slovakia', value: 'SK' },
 		{ name: 'Sweden', value: 'SE' },
 		{ name: 'Switzerland', value: 'CH' },
@@ -102,7 +110,7 @@ const NATIONAL_ID: Field = {
 	required: true,
 	placeholder: '0403170701',
 	description:
-		'National registration number, in that register\'s own format: BE ten digits (0403170701) · CH the UID (CHE-107.480.920) · CZ the IČO eight digits · DK the CVR eight digits · EE the registrikood eight digits · FI the business ID (0112038-9) · LV eleven digits · NO nine digits · PL the KRS ten digits · SE the org. number (5560401977) · GB the company number (00445790). A wrong format comes back as "not found", which is indistinguishable from a company that does not exist.',
+		'National registration number, in that register\'s own format: BE ten digits (0403170701) · CH the UID (CHE-107.480.920) · CY HE or AE and up to seven digits (HE165) · CZ the IČO eight digits · DK the CVR eight digits · EE the registrikood eight digits · FI the business ID (0112038-9) · HR the OIB eleven digits (92803032010) · IE the CRO number, up to seven digits (600161) · LT the company code nine digits (304500803) · LV eleven digits · NO nine digits · PL the KRS ten digits · RO the CUI, up to ten digits (412052) · SE the org. number (5560401977) · GB the company number (00445790). A wrong format comes back as "not found", which is indistinguishable from a company that does not exist.',
 };
 
 export const RESOURCES: Resource[] = [
@@ -1186,9 +1194,9 @@ export const RESOURCES: Resource[] = [
 				name: 'List Annual Filings',
 				action: 'List the annual account filings',
 				description:
-					'Published annual accounts for a European company. Belgium and Finland return the list of filings to fetch one by one; Norway, Latvia, Estonia and Sweden return the figures directly; Denmark, Slovakia and the United Kingdom return the available financial years. Czechia, Poland and Switzerland are NOT covered by this route. Price depends on the country: $0.01 (BE, FI, DK, SK, GB), $0.02 (EE, NO), $0.03 (LV, SE); on the wallet rail, set Max Amount Per Call to at least $0.03.',
+					'Published annual accounts for a European company. Belgium and Finland return the list of filings to fetch one by one; Norway, Latvia, Estonia, Sweden, Lithuania and Romania return the figures directly; Denmark, Slovakia and the United Kingdom return the available financial years; Croatia and Poland list the filings recorded at the register, without figures. Cyprus, Czechia, Ireland and Switzerland are NOT covered by this route. Price depends on the country: $0.01 (BE, FI, DK, SK, GB, HR, PL), $0.02 (EE, NO, LT, RO), $0.03 (LV, SE); on the wallet rail, set Max Amount Per Call to at least $0.03.',
 				path: (p) => {
-					const servis = ['BE', 'DK', 'EE', 'FI', 'LV', 'NO', 'SE', 'SK', 'GB'];
+					const servis = ['BE', 'DK', 'EE', 'FI', 'HR', 'LT', 'LV', 'NO', 'PL', 'RO', 'SE', 'SK', 'GB'];
 					if (!servis.includes(p('country'))) {
 						throw new Error(
 							`Annual accounts are not served for ${p('country')}. Countries covered: ${servis.join(', ')}.`,
@@ -1206,12 +1214,12 @@ export const RESOURCES: Resource[] = [
 				name: 'Get Annual Filing',
 				action: 'Get one annual account filing',
 				description:
-					'One annual-account filing in full. Only the countries that serve filings one by one have this route: Belgium and Finland (by filing reference, $0.15), Denmark and the United Kingdom (by closing date, $0.05), Slovakia (by reference, $0.03). For Norway, Latvia, Estonia and Sweden, List Annual Filings already returns the figures. A Belgian filing older than April 2022 comes back as the original PDF, attached as binary data.',
+					'One annual-account filing in full. Only the countries that serve filings one by one have this route: Belgium and Finland (by filing reference, $0.15), Denmark and the United Kingdom (by closing date, $0.05), Slovakia (by reference, $0.03). For Norway, Latvia, Estonia, Sweden, Lithuania and Romania, List Annual Filings already returns the figures. A Belgian filing older than April 2022 comes back as the original PDF, attached as binary data.',
 				path: (p) => {
 					const servis = ['BE', 'DK', 'FI', 'SK', 'GB'];
 					if (!servis.includes(p('country'))) {
 						throw new Error(
-							`${p('country')} does not serve filings one by one. Countries covered: ${servis.join(', ')}. For the others, List Annual Filings already returns the figures.`,
+							`${p('country')} does not serve filings one by one. Countries covered: ${servis.join(', ')}. For the others, List Annual Filings returns what the register publishes.`,
 						);
 					}
 					return `/v1/eu/entreprise/${enc(p('country'))}/${enc(p('companyId'))}/comptes/${enc(p('filingReference'))}`;

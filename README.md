@@ -92,7 +92,7 @@ and [get your supplier master data ready for French e-invoicing](https://api.sir
 | **Search BODACC Announcements** | The other direction: *which* companies entered insolvency in this department this week | $0.03 |
 | **Get KYB File** | Everything to onboard a supplier in one call, including sanctions screening | $0.15 |
 | **Screen Sanctions** | A name against 6 official lists (UN, EU, OFAC, UK, French freezes, Swiss SECO) | $0.02 |
-| **Get European Company** | One schema across the national registers listed under *Coverage*, each also served by the API on its own dedicated route | $0.01 |
+| **Get European Company** | One schema across the seventeen national registers listed under *Coverage* | $0.01 |
 | **Get Company Officers** (EU) | Officers and board members from seven national registers, one schema: CY, DK, EE, GB, LV, NO, RO | $0.01 |
 | **Get Insolvency Record** (EU) | Insolvency proceedings from eight official registers: CH, CZ, GB, HR, IE, LT, LV, RO | $0.02 |
 | **Verify Invoice** | The three identifiers printed on an invoice at once: SIREN against Sirene, VAT against VIES, IBAN form and bank | $0.02 |
@@ -187,9 +187,11 @@ anyone who would rather not open an account at all: it is the only rail that nee
 no e-mail address.
 
 Ready-made workflows take the API-key rail with n8n's native nodes (HTTP Request, MCP
-Client Tool) instead of this community node, so they also run on n8n Cloud: the six in
-the [`templates/`](https://github.com/sirenic-eu/n8n-nodes-sirenic/tree/main/templates)
-folder of this repository, and twelve more at <https://api.sirenic.eu/workflows>.
+Client Tool) instead of this community node, so they also run on n8n Cloud: twelve at
+<https://api.sirenic.eu/workflows>, and two more in the
+[`templates/`](https://github.com/sirenic-eu/n8n-nodes-sirenic/tree/main/templates)
+folder of this repository (weekly default-risk scoring of a customer book, e-invoicing
+readiness audit), on routes the twelve do not call.
 
 ### Funding a wallet
 
@@ -245,26 +247,37 @@ paying for it.
 **France** in depth (INSEE Sirene, INPI RNE, BODACC, filed accounts, procurement,
 intellectual property, regulatory authorisations, industrial risks, lobbying).
 
-**Europe: one operation, per-country official registers.** *Get European Company*
-takes a country code and the national ID. Each live register is also exposed by the
-API as its own dedicated route (e.g. `/v1/eu/entreprise/CH/CHE-107.480.920`), so
-agents searching for one country find a dedicated, documented endpoint:
+**Europe: one operation, seventeen official national registers.** *Get European Company*
+takes a country code and the national ID, and answers in one schema for every country.
+Ten registers are served from dated local copies of their open data, which stop being
+served when they go stale; seven are queried live on each call (Switzerland, Czechia,
+Finland, Poland, Slovakia, Denmark, United Kingdom). Fifteen also have their own
+dedicated profile route in the API (e.g. `/v1/eu/entreprise/CH/CHE-107.480.920`), so
+agents searching for one country find a dedicated, documented endpoint; Denmark and the
+United Kingdom go through the generic route only.
 
 | Country | Official register | National ID |
 |---|---|---|
 | Belgium | KBO/BCE, plus NACEBEL activities, establishment units, NBB annual accounts, FSMA insider transactions | 10-digit enterprise number |
-| Switzerland | Zefix (Central Business Name Index) | UID `CHE-…` |
-| Norway | Brønnøysundregistrene | 9-digit organisasjonsnummer |
+| Croatia | Sudski registar (court register) | 11-digit OIB |
+| Cyprus | Department of the Registrar of Companies (DRCOR) | `HE` or `AE` registration number |
 | Czechia | ARES | 8-digit IČO |
-| Slovakia | RPO | 8-digit IČO |
-| Finland | PRH / YTJ | Business ID (Y-tunnus) |
-| Poland | KRS | KRS number |
+| Denmark | CVR | 8-digit CVR number |
 | Estonia | e-Business Register (Äriregister) | 8-digit registrikood |
+| Finland | PRH / YTJ | Business ID (Y-tunnus) |
+| Ireland | Companies Registration Office (CRO) | CRO company number |
 | Latvia | Uzņēmumu reģistrs | 11-digit registration number |
+| Lithuania | Juridinių asmenų registras (Registrų centras) | 9-digit company code |
+| Norway | Brønnøysundregistrene | 9-digit organisasjonsnummer |
+| Poland | KRS | KRS number |
+| Romania | ONRC (Registrul Comerțului) | CUI (fiscal code) |
+| Slovakia | RPO | 8-digit IČO |
+| Sweden | Bolagsverket | 10-digit organisationsnummer |
+| Switzerland | Zefix (Central Business Name Index) | UID `CHE-…` |
 | United Kingdom | Companies House | company number |
-| Denmark | CVR (coming soon) | CVR number |
 
-Anywhere else, entities carrying an LEI are served from GLEIF (worldwide).
+Anywhere else, entities carrying an LEI are served from GLEIF (worldwide); Germany and
+the Netherlands are refused, and France has its own operations above.
 
 **No ownership chains up to natural persons, ever.** The CJEU ended public access to the
 registers of ultimate owners in 2022, and French law excludes them from public

@@ -82,6 +82,35 @@ describe('query contract — parameters the API requires', () => {
 		expect(country?.options?.map((o) => o.value)).toEqual(['BE', 'PL']);
 	});
 
+	it('the European profile offers the seventeen national registers the API serves', () => {
+		// Copied from the `pays` parameter of /v1/eu/entreprise/{pays}/{id} in the served OpenAPI,
+		// 2026-11-20 (kopko13/sirenic#175): local copies BE, CY, EE, HR, IE, LT, LV, NO, RO, SE;
+		// live CH, CZ, FI, PL, SK; "DK, GB live too". The README Coverage table says the same.
+		const op = findOperation('europeanCompany', 'get');
+		const country = op?.fields?.find((f) => f.name === 'country');
+		expect(country?.options?.map((o) => o.value).sort()).toEqual(
+			['BE', 'CH', 'CY', 'CZ', 'DK', 'EE', 'FI', 'GB', 'HR', 'IE', 'LT', 'LV', 'NO', 'PL', 'RO', 'SE', 'SK'],
+		);
+		for (const pays of ['CY', 'HR', 'IE', 'LT', 'RO']) {
+			expect(build('europeanCompany', 'get', { country: pays, companyId: '123' })).toBe(`/v1/eu/entreprise/${pays}/123`);
+		}
+	});
+
+	it('annual filings call every country with an accounts route, and refuse the others before paying', () => {
+		// Accounts routes of the served OpenAPI, 2026-11-20: BE and FI through the generic route,
+		// DK, EE, GB, HR, LT, LV, NO, PL, RO, SE, SK on their own; none for CH, CY, CZ, IE.
+		for (const pays of ['BE', 'DK', 'EE', 'FI', 'GB', 'HR', 'LT', 'LV', 'NO', 'PL', 'RO', 'SE', 'SK']) {
+			expect(build('europeanCompany', 'listFilings', { country: pays, companyId: '123' })).toBe(
+				`/v1/eu/entreprise/${pays}/123/comptes`,
+			);
+		}
+		for (const pays of ['CH', 'CY', 'CZ', 'IE']) {
+			expect(() => build('europeanCompany', 'listFilings', { country: pays, companyId: '123' })).toThrow(
+				/not served/,
+			);
+		}
+	});
+
 	it('VAT numbers and IBANs are normalised before they reach the path', () => {
 		// The API validates the raw path segment: spaces would arrive as %20.
 		expect(build('invoicing', 'verifyVat', { vatNumber: 'FR 27 552032534' })).toBe(
