@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.19.0 (prepared on 2026-11-20, not published yet)
+## 0.19.0 (2026-11-20)
 
 ### Get European Company offers the seventeen registers the API serves
 
