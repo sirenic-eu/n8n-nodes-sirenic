@@ -18,12 +18,17 @@ target. You only pay for calls that succeed.
 
 ![Verifying a French supplier from n8n](https://raw.githubusercontent.com/sirenic-eu/n8n-nodes-sirenic/main/media/demo-sirenic-node.gif)
 
-Sixteen seconds, no commentary: open the Sirenic node, pick *Supplier Verification
-& Invoicing → Verify French Supplier*, enter a SIREN, run it. This is a real paid
-call against the live API, and the output is the actual verification file for Danone:
-legal name and status, the computed intra-EU VAT number checked live against VIES,
-the head office and its nineteen establishments. It cost $0.03, paid on the wallet
-rail: settled in USDC on Base, with no account and no API key.
+Twenty-two seconds, no commentary: open the Sirenic node set to *Supplier Verification
+& Invoicing → Verify French Supplier*, enter a SIREN, run it. This is a real paid call
+against the live API, recorded on 20 November 2026 with n8n 2.48.6 and the 0.18.0
+package installed from the npm registry, and the output is the actual verification file
+for Danone: legal name and status, the head office and its nineteen establishments
+(folded away in the clip), the computed intra-EU VAT number and the ready-to-invoice
+verdict. VIES did not answer in time during that call, so the VAT check reads
+`indisponible` and the verdict gives it as an informational reason: the API never turns
+a VIES outage into a false "invalid". The seconds spent waiting for VIES are cut from
+the clip. It cost 0.03 credits (1 credit = 1 euro) on the API-key rail, the default:
+no wallet, no crypto.
 
 Not sure what a call will cost? Every operation states its price in its description,
 and on either rail the **Dry Run** option fetches the quote the API returns for that
