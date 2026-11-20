@@ -4,8 +4,8 @@ name: Publish n8n node to npm
 #
 # Since 1 May 2026 n8n requires, verbatim: "you must publish ALL community nodes
 # using a GitHub action and include a provenance statement". Both existing x402
-# community nodes fail the official scanner on exactly this — "Package was not
-# published with npm provenance" — which is why neither is available on n8n
+# community nodes fail the official scanner on exactly this ("Package was not
+# published with npm provenance"), which is why neither is available on n8n
 # Cloud. Publishing with provenance from day one is what makes this package
 # eligible.
 #
@@ -15,13 +15,23 @@ name: Publish n8n node to npm
 # publish that does not come from GitHub Actions.
 #
 # AUTHENTICATION: npm trusted publishing (OIDC). There is no npm token here and
-# no `NPM_TOKEN` secret to leak or rotate — npm authenticates the run itself
+# no `NPM_TOKEN` secret to leak or rotate: npm authenticates the run itself
 # from the OIDC token GitHub mints below, and only accepts it for the exact
 # repository and workflow filename registered on npmjs.com. That registration is
 # part of the build: rename this file and publishing stops working until the
-# trusted publisher is updated to match.
+# trusted publisher is updated to match. The `publish` job stays in this file
+# for the same reason.
 #
-# Trigger: push a tag shaped `v*` (e.g. v0.3.1), or run it by hand.
+# TWO JOBS (kopko13/sirenic#154, review of 0.16.0 on 03/10/2026):
+# - `build` is ci.yml itself, called with `pack`: `npm ci`, typecheck, lint,
+#   tests, build, then `npm pack`. It has no `id-token`, so the installation
+#   scripts of the lock file never run where the publication token can be minted.
+# - `publish` runs no code of any dependency: it checks the reference, then
+#   publishes the tarball `build` handed over, with a pinned npm.
+#
+# Trigger: push a tag `v<version of package.json>` on a commit of main (e.g.
+# v0.19.0), or run it by hand on that tag. Anything else is refused before
+# publishing: another branch, a tag that is not the version, a commit off main.
 
 on:
   push:
@@ -29,10 +39,20 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# (dedicated repository: the package sits at the root — no working-directory)
+permissions: {}
+
+# (dedicated repository: the package sits at the root, no working-directory)
 
 jobs:
+  build:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      pack: true
+
   publish:
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,56 +60,58 @@ jobs:
       # artifact was built from this repository, by this workflow.
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Every branch, to check that the tagged commit is on main.
+          fetch-depth: 0
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install an npm that can do trusted publishing
-        # Node 22 still ships npm 10.x, and OIDC publishing needs 11.5.1 or
-        # later. Without this the publish fails with ENEEDAUTH — which reads
-        # like a missing token and sends you looking in the wrong place, so the
-        # version is asserted here rather than discovered at the publish step.
+      - name: Take the tarball the build job checked
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: package
+
+      - name: Refuse anything but the tag v<version> on a commit of main
+        # The trusted publisher binds the repository and this file, not the
+        # reference: without this step, a manual run from any branch would
+        # publish the version of that branch's package.json.
         run: |
-          npm install -g npm@latest
+          set -euo pipefail
+          tarball=$(ls n8n-nodes-sirenic-*.tgz)
+          version=$(tar -xzOf "$tarball" package/package.json | node -e 'let s = ""; process.stdin.on("data", (d) => { s += d; }).on("end", () => process.stdout.write(JSON.parse(s).version));')
+          checked_out=$(node -p "require('./package.json').version")
+          if [ "$version" != "$checked_out" ]; then
+            echo "::error::the tarball carries ${version}, the checked-out package.json ${checked_out}"
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != "refs/tags/v${version}" ]; then
+            echo "::error::${GITHUB_REF} is not refs/tags/v${version}: only the tag of the package version publishes"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$(git rev-parse HEAD) is not on main: only a commit of main publishes"
+            exit 1
+          fi
+          echo "TARBALL=${tarball}" >> "$GITHUB_ENV"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "Publishing ${tarball} (${version}) from ${GITHUB_REF} at $(git rev-parse HEAD), on main"
+
+      - name: Install the npm that does trusted publishing, pinned
+        # Node 22 still ships npm 10.x, and OIDC publishing needs 11.5.1 or
+        # later. Without this the publish fails with ENEEDAUTH, which reads
+        # like a missing token and sends you looking in the wrong place. The
+        # version is exact, not @latest, and asserted.
+        run: |
+          npm install -g --ignore-scripts npm@11.21.2
           version=$(npm --version)
           echo "npm ${version}"
-          node -e '
-            const v = process.argv[1].split(".").map(Number);
-            const ok = v[0] > 11 || (v[0] === 11 && (v[1] > 5 || (v[1] === 5 && v[2] >= 1)));
-            if (!ok) {
-              console.error(`::error::npm ${process.argv[1]} is too old for trusted publishing (need 11.5.1 or later)`);
-              process.exit(1);
-            }
-          ' "$version"
-
-      - run: npm install --no-audit --no-fund
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint (official n8n-node tool, strict mode)
-        # In strict mode `n8n-node lint` ALSO checks that eslint.config.mjs has
-        # not been changed from the official config — that is the eligibility
-        # condition for n8n Cloud publishing.
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify the package declares no runtime dependencies
-        # Belt and braces: `dependencies` must stay empty or the package is
-        # rejected at verification. Catching it here beats catching it after a
-        # publish that cannot be undone.
-        run: |
-          deps=$(node -p "JSON.stringify(require('./package.json').dependencies ?? {})")
-          if [ "$deps" != "{}" ]; then
-            echo "::error::package.json declares runtime dependencies: $deps"
+          if [ "$version" != "11.21.2" ]; then
+            echo "::error::npm ${version} installed instead of 11.21.2"
             exit 1
           fi
 
@@ -100,7 +122,7 @@ jobs:
         # win over OIDC and we would believe we had moved off tokens when we had
         # not. `--provenance` is redundant under trusted publishing (npm attests
         # automatically) but harmless, and it keeps the intent readable.
-        run: npm publish --provenance --access public
+        run: npm publish "./${TARBALL}" --provenance --access public
 
       - name: Verify the registry really recorded the provenance attestation
         # `--provenance` succeeding is not proof the attestation landed: what the
@@ -112,15 +134,14 @@ jobs:
         # with their attestation. Five minutes covers both measurements with a
         # margin, and the loop still stops at the first confirmation.
         run: |
-          version=$(node -p "require('./package.json').version")
           for attempt in $(seq 1 30); do
-            type=$(npm view "n8n-nodes-sirenic@${version}" dist.attestations.provenance.predicateType 2>/dev/null || true)
+            type=$(npm view "n8n-nodes-sirenic@${VERSION}" dist.attestations.provenance.predicateType 2>/dev/null || true)
             if [ "$type" = "https://slsa.dev/provenance/v1" ]; then
-              echo "Provenance attestation confirmed for ${version} (attempt ${attempt})"
+              echo "Provenance attestation confirmed for ${VERSION} (attempt ${attempt})"
               exit 0
             fi
             echo "attempt ${attempt}/30: no attestation yet, waiting"
             sleep 10
           done
-          echo "::error::n8n-nodes-sirenic@${version} is published but the registry reports no provenance attestation after 5 minutes: n8n verification will reject it."
+          echo "::error::n8n-nodes-sirenic@${VERSION} is published but the registry reports no provenance attestation after 5 minutes: n8n verification will reject it."
           exit 1
